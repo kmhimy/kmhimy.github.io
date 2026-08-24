@@ -2242,3 +2242,46 @@ body[data-density="compact"] .nav-item{padding-top:9px;padding-bottom:9px}
   .page-header h1,.today-command-header h2{font-size:34px}
   .today-command-top h2{font-size:24px}
 }
+
+/* ==========================================================================
+   V12.5 — Single Today header
+   ========================================================================== */
+#view-today > h1,
+#view-today > .view-title,
+#view-today > .page-title,
+#view-today > .page-header,
+#view-today > header.page-header{display:none!important}
+#view-today .today-command-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:24px;
+  margin:0 0 24px;
+  padding:0;
+}
+#view-today .today-command-header .panel-kicker{
+  margin-bottom:7px;
+  font-size:12px;
+  letter-spacing:.10em;
+}
+#view-today .today-command-header h2{
+  margin:0;
+  font-size:42px;
+  line-height:1.05;
+}
+#view-today .today-command-header p{
+  margin:10px 0 0;
+  max-width:760px;
+  font-size:14px;
+  line-height:1.55;
+}
+#view-today .today-header-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding-top:2px;
+}
+@media(max-width:760px){
+  #view-today .today-command-header{flex-direction:column}
+  #view-today .today-header-actions{width:100%;flex-wrap:wrap}
+}
