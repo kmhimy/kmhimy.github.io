@@ -180,3 +180,22 @@ Today 页顶部现在只有一套操作按钮：
 Today 激活时，应用级全局 Header 整体隐藏；切换到项目、日志、日历、时间轴等其他页面后，全局 Header 正常恢复。
 
 搜索功能不是删除，而是移动到 Today 自己的 Header 中，并继续复用 Ctrl+K 全局搜索。
+
+
+## V12.8 — 专注模式布局修复
+
+修复 V12.7 中进入专注模式后：
+
+- 内容被压缩到左侧窄栏
+- 右侧出现巨大空白
+- Search / Exit Focus 与主体布局脱节
+
+V12.8 专注模式使用独立布局：
+
+- 隐藏侧栏与全局 Header
+- Today 居中，最大宽度 1120px
+- 顶部只保留 Search + Exit Focus
+- “今天最重要的三件事”占满主体宽度
+- 不再继承普通页面的 sidebar/grid/margin-left
+- 解决 font-scale 的 zoom 与专注模式宽度冲突
+- Esc 仍可退出专注

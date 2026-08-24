@@ -2375,3 +2375,157 @@ body.is-today-view #view-today .today-header-actions{
 body.is-today-view #view-today .today-command-header{
   display:flex!important;
 }
+
+/* ==========================================================================
+   V12.8 — Focus mode layout repair
+   Focus mode gets its own independent layout instead of inheriting the
+   normal sidebar/grid geometry.
+   ========================================================================== */
+
+/* Hide the normal navigation chrome in focus mode. */
+body.today-focus-mode .sidebar,
+body.today-focus-mode .global-app-header{
+  display:none!important;
+}
+
+/* Reset every common left-offset / grid reservation used by the normal app. */
+body.today-focus-mode .app-shell,
+body.today-focus-mode .app-layout,
+body.today-focus-mode .workspace,
+body.today-focus-mode .workspace-shell,
+body.today-focus-mode .main-layout,
+body.today-focus-mode .app-main,
+body.today-focus-mode .main,
+body.today-focus-mode main{
+  width:100%!important;
+  max-width:none!important;
+  margin-left:0!important;
+  margin-right:0!important;
+  padding-left:0!important;
+  grid-template-columns:1fr!important;
+}
+
+/* Keep only Today in focus mode. */
+body.today-focus-mode .view{
+  display:none!important;
+}
+body.today-focus-mode #view-today{
+  display:block!important;
+  width:min(1120px,calc(100vw - 96px))!important;
+  max-width:1120px!important;
+  margin:0 auto!important;
+  padding:34px 0 70px!important;
+  box-sizing:border-box!important;
+}
+
+/* Focus header becomes a normal full-width row inside the centered column. */
+body.today-focus-mode #view-today .today-command-header{
+  display:flex!important;
+  width:100%!important;
+  margin:0 0 28px!important;
+  padding:0!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:24px!important;
+}
+body.today-focus-mode #view-today .today-command-header > div:first-child{
+  min-width:0;
+  max-width:760px;
+}
+body.today-focus-mode #view-today .today-header-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  flex:0 0 auto!important;
+}
+
+/* In focus mode keep only Search + Exit focus. */
+body.today-focus-mode #todayReviewYesterdayBtn,
+body.today-focus-mode #todayAddTaskBtn{
+  display:none!important;
+}
+body.today-focus-mode #todaySearchBtn{
+  display:inline-flex!important;
+}
+body.today-focus-mode #todayFocusBtn{
+  position:static!important;
+  right:auto!important;
+  top:auto!important;
+  z-index:auto!important;
+  display:inline-flex!important;
+  background:#17232b!important;
+  color:#fff!important;
+}
+
+/* The core focus card should use the whole content width. */
+body.today-focus-mode #view-today .today-command-center{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:30px 32px!important;
+  box-sizing:border-box!important;
+}
+
+/* Hide everything except the header and today's three. */
+body.today-focus-mode #view-today .today-continuity-grid,
+body.today-focus-mode #view-today .today-work-grid,
+body.today-focus-mode #view-today .today-capture-panel{
+  display:none!important;
+}
+
+/* Prevent global font-scale zoom from collapsing available CSS width in focus mode.
+   Apply scale inside the focus content instead. */
+body.today-focus-mode .app-shell{
+  zoom:1!important;
+}
+body.today-focus-mode #view-today{
+  font-size:calc(15px * var(--font-scale));
+}
+body.today-focus-mode #view-today .today-command-header h2{
+  font-size:calc(42px * var(--font-scale));
+}
+body.today-focus-mode #view-today .today-command-top h2{
+  font-size:calc(27px * var(--font-scale));
+}
+body.today-focus-mode #view-today .today-top3-title{
+  font-size:calc(16px * var(--font-scale));
+}
+
+/* Inputs and rows stay horizontal and readable. */
+body.today-focus-mode .today-top3-add{
+  display:flex!important;
+  width:100%!important;
+  gap:10px!important;
+}
+body.today-focus-mode .today-top3-add select{
+  flex:1 1 auto!important;
+  min-width:0!important;
+}
+body.today-focus-mode .today-top3-add button{
+  flex:0 0 auto!important;
+}
+body.today-focus-mode .today-top3-item{
+  grid-template-columns:28px minmax(0,1fr) auto auto!important;
+}
+
+/* Responsive focus layout */
+@media(max-width:760px){
+  body.today-focus-mode #view-today{
+    width:calc(100vw - 32px)!important;
+    padding-top:20px!important;
+  }
+  body.today-focus-mode #view-today .today-command-header{
+    flex-direction:column!important;
+  }
+  body.today-focus-mode #view-today .today-header-actions{
+    width:100%!important;
+    justify-content:flex-start!important;
+  }
+  body.today-focus-mode #view-today .today-command-center{
+    padding:22px 18px!important;
+  }
+  body.today-focus-mode .today-top3-add{
+    flex-direction:column!important;
+  }
+}

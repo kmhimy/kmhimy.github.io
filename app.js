@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 12.7;
+const APP_VERSION = 12.8;
 
 const state = loadState();
 let activeFilter = "all";
