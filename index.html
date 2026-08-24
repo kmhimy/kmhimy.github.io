@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=12.1.0" />
+  <link rel="stylesheet" href="style.css?v=11.0.0" />
 </head>
 <body>
 
@@ -176,97 +176,96 @@
       </header>
 
       <section id="view-today" class="view active">
-        <div class="today-command-header">
-          <div>
-            <div id="todayDateLabel" class="panel-kicker">TODAY</div>
-            <h2>今天</h2>
-            <p id="todayOpeningLine">先看清楚昨天做到哪里，再决定今天真正要推进什么。</p>
-          </div>
-          <div class="today-header-actions">
-            <button id="todayReviewYesterdayBtn" class="ghost-btn" type="button">昨天回顾</button>
-            <button id="todayFocusBtn" class="ghost-btn" type="button">专注模式</button>
-            <button id="todayAddTaskBtn" class="primary-btn" type="button">+ 添加任务</button>
-          </div>
+        <div class="grid two-thirds">
+          <article class="panel focus-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">今日重点</div>
+                <h2>今天最重要的三件事</h2>
+              </div>
+              <span class="count-pill" id="priorityCount">0 / 3</span>
+            </div>
+
+            <div id="priorityList" class="priority-list"></div>
+
+            <form id="priorityForm" class="inline-form">
+              <input id="priorityInput" maxlength="120" placeholder="快速添加为今日重点…" autocomplete="off" />
+              <button type="submit">添加</button>
+            </form>
+            <div class="hint">这里添加的事项会同时进入“待办事项”。</div>
+          </article>
+
+          <article class="panel stat-panel">
+            <div class="panel-kicker">今日</div>
+            <div class="big-number" id="doneCount">0</div>
+            <div class="stat-label">项任务已完成</div>
+            <div class="stat-divider"></div>
+            <div class="small-stat">
+              <span>待办任务</span>
+              <strong id="openCount">0</strong>
+            </div>
+            <div class="small-stat">
+              <span>进行中的项目</span>
+              <strong id="projectCount">0</strong>
+            </div>
+            <div class="small-stat">
+              <span>今日重点</span>
+              <strong id="priorityStat">0 / 3</strong>
+            </div>
+          </article>
         </div>
 
-        <section class="panel today-command-center">
-          <div class="today-command-top">
-            <div>
-              <div class="panel-kicker">TODAY'S THREE</div>
-              <h2>今天最重要的三件事</h2>
-              <p>不是任务清单，而是今天真正需要推进的三个研究动作。</p>
-            </div>
-            <span id="todayTop3Progress" class="count-pill">0 / 3</span>
-          </div>
-          <div id="todayTop3List" class="today-top3-list"></div>
-          <div class="today-top3-add">
-            <select id="todayTop3TaskSelect" aria-label="从任务中选择今日重点"></select>
-            <button id="todayTop3AddBtn" class="ghost-btn" type="button">加入今日重点</button>
-          </div>
-        </section>
-
-        <div class="today-continuity-grid">
-          <section class="panel today-yesterday-panel">
+        <div class="grid two-thirds lower-grid">
+          <article class="panel">
             <div class="panel-head">
-              <div><div class="panel-kicker">YESTERDAY</div><h2>昨天做到哪里</h2></div>
-              <span id="todayYesterdayCount" class="count-pill">0</span>
-            </div>
-            <div id="todayYesterdayList" class="today-continuity-list"></div>
-          </section>
-
-          <section class="panel today-next-panel">
-            <div class="panel-head">
-              <div><div class="panel-kicker">CONTINUE</div><h2>今天接着做什么</h2></div>
-              <span id="todayContinueCount" class="count-pill">0</span>
-            </div>
-            <div id="todayContinueList" class="today-continuity-list"></div>
-          </section>
-        </div>
-
-        <div class="today-work-grid">
-          <section class="panel today-active-panel">
-            <div class="panel-head">
-              <div><div class="panel-kicker">ACTIVE TASKS</div><h2>今日工作台</h2></div>
-              <div class="today-filter-tabs">
-                <button class="active" data-today-filter="all" type="button">全部</button>
-                <button data-today-filter="research" type="button">科研</button>
-                <button data-today-filter="writing" type="button">写作</button>
-                <button data-today-filter="admin" type="button">事务</button>
+              <div>
+                <div class="panel-kicker">待办事项</div>
+                <h2>进行中</h2>
+              </div>
+              <div class="filter-row">
+                <button class="filter active" data-filter="all" type="button">全部</button>
+                <button class="filter" data-filter="research" type="button">科研</button>
+                <button class="filter" data-filter="writing" type="button">写作</button>
+                <button class="filter" data-filter="admin" type="button">事务</button>
               </div>
             </div>
-            <div id="todayActiveTaskList" class="today-active-task-list"></div>
-          </section>
+            <div id="taskList" class="task-list"></div>
+            <button id="addTaskInlineBtn" class="add-row" type="button">+ 添加任务</button>
+          </article>
 
-          <aside class="today-side-stack">
-            <section class="panel today-progress-card">
-              <div class="panel-kicker">PROGRESS</div>
-              <strong id="todayDoneNumber">0</strong>
-              <span>项任务今天完成</span>
-              <div class="today-progress-line"></div>
-              <div class="today-progress-row"><span>待办</span><b id="todayOpenNumber">0</b></div>
-              <div class="today-progress-row"><span>活跃项目</span><b id="todayProjectNumber">0</b></div>
-              <div class="today-progress-row"><span>Work Log</span><b id="todayWorkLogNumber">0</b></div>
-            </section>
-
-            <section class="panel today-done-card">
-              <div class="panel-kicker">DONE TODAY</div>
-              <h2>今天推进了什么</h2>
-              <div id="todayDoneList" class="today-done-list"></div>
-            </section>
-          </aside>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">今日完成</div>
+                <h2>今天推进了什么</h2>
+              </div>
+            </div>
+            <div id="doneList" class="done-list"></div>
+          </article>
         </div>
 
-        <section class="panel today-capture-panel">
-          <div>
-            <div class="panel-kicker">END OF DAY</div>
-            <h2>收工前留一句话</h2>
-            <p>写下今天真正推进了什么，以及明天从哪里继续。它会成为明天首页的上下文。</p>
+        <article class="panel today-progress-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-kicker">TODAY'S RESEARCH PROGRESS</div>
+              <h2>今日科研进展</h2>
+              <p class="panel-subtext">这里统计今天真正留下的工作记录，即使任务还没有完成。</p>
+            </div>
+            <span id="todayWorkLogCount" class="count-pill">0</span>
           </div>
-          <div class="today-capture-editor">
-            <textarea id="todayDailyNote" rows="3" placeholder="例如：三模波导的 XY cancellation 已重新检查；明天先验证 ZZ 是否仍保持有限。"></textarea>
-            <button id="todayDailyNoteSaveBtn" class="primary-btn" type="button">保存今日小结</button>
+          <div id="todayWorkLogList" class="today-progress-list"></div>
+        </article>
+
+        <article class="panel note-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-kicker">随手记</div>
+              <h2>先记下来，别让想法溜走</h2>
+            </div>
+            <span id="noteSaved" class="saved-indicator">已保存</span>
           </div>
-        </section>
+          <textarea id="quickNote" placeholder="推导想法、问题、提醒、值得保留的结果……"></textarea>
+        </article>
       </section>
 
 
@@ -1043,23 +1042,11 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <div id="v12LegacyTodayCompat" hidden aria-hidden="true">
-    <form id="priorityForm"><input id="priorityInput"><button type="submit"></button></form>
-    <div id="priorityList"></div>
-
-  <script src="config.js?v=12.1.0"></script>
+  <script src="config.js?v=11.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=12.1.0"></script>
-<div id="priorityCount"></div><div id="priorityStat"></div>
-  <button id="addTaskInlineBtn" type="button"></button>
-  <div id="taskList"></div><div id="doneList"></div>
-  <div id="doneCount"></div><div id="openCount"></div><div id="projectCount"></div>
-  <textarea id="quickNote"></textarea><div id="noteSaved"></div>
-  <div id="todayWorkLogList"></div><div id="todayWorkLogCount"></div>
-</div>
-
+  <script src="app.js?v=11.0.0"></script>
 </body>
 </html>
