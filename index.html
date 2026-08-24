@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=12.8.0" />
+  <link rel="stylesheet" href="style.css?v=13.0.0" />
 </head>
 <body class="is-today-view">
 
@@ -659,7 +659,12 @@
               <div>周一</div><div>周二</div><div>周三</div><div>周四</div>
               <div>周五</div><div>周六</div><div>周日</div>
             </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
+            <div class="calendar-category-legend" aria-label="任务分类颜色说明">
+            <span><i class="calendar-category-dot research"></i>科研</span>
+            <span><i class="calendar-category-dot writing"></i>写作</span>
+            <span><i class="calendar-category-dot admin"></i>事务</span>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
           </article>
 
           <aside class="calendar-side">
@@ -1066,12 +1071,12 @@
   </button>
 
   <div id="toast" class="toast"></div>
-<script src="config.js?v=12.8.0"></script>
+<script src="config.js?v=13.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=12.8.0"></script>
+  <script src="app.js?v=13.0.0"></script>
 <div id="priorityCount"></div><div id="priorityStat"></div>
   <button id="addTaskInlineBtn" type="button"></button>
   <div id="taskList"></div><div id="doneList"></div>

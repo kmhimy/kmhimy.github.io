@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 12.8;
+const APP_VERSION = 13;
 
 const state = loadState();
 let activeFilter = "all";
@@ -1375,6 +1375,33 @@ function switchView(name){
 // V8 — Calendar / Deadlines
 // ============================================================================
 
+
+function calendarCategoryClass(category){
+  if(category==="research") return "research";
+  if(category==="writing") return "writing";
+  if(category==="admin") return "admin";
+  return "other";
+}
+
+function calendarDayCategoryMarkers(tasks){
+  const cats=[...new Set((tasks||[])
+    .map(t=>calendarCategoryClass(t.category))
+    .filter(c=>["research","writing","admin"].includes(c)))];
+  return cats.map(c=>{
+    const label=c==="research"?"科研":c==="writing"?"写作":"事务";
+    return `<span class="calendar-day-marker ${c}" title="${label}"></span>`;
+  }).join("");
+}
+
+function calendarAddButtonClass(tasks){
+  const cats=[...new Set((tasks||[])
+    .map(t=>calendarCategoryClass(t.category))
+    .filter(c=>["research","writing","admin"].includes(c)))];
+  if(cats.length===0) return "neutral";
+  if(cats.length===1) return cats[0];
+  return "mixed";
+}
+
 function renderCalendar(){
   if(!els.calendarGrid) return;
 
@@ -1405,11 +1432,12 @@ function renderCalendar(){
       <div class="calendar-day ${inMonth?"":"other-month"} ${key===todayKey?"today":""}">
         <div class="calendar-day-head">
           <span class="calendar-day-number">${d.getDate()}</span>
-          <button class="calendar-add-btn" type="button" onclick="openTaskDialogWithDue('${key}')" title="添加 ${key} 截止任务">+</button>
+          <button class="calendar-add-btn ${calendarAddButtonClass(tasks)}" type="button" onclick="openTaskDialogWithDue('${key}')" title="添加 ${key} 截止任务">+</button>
         </div>
+        <div class="calendar-day-markers">${calendarDayCategoryMarkers(tasks)}</div>
         <div class="calendar-day-tasks">
           ${visible.map(t=>`
-            <button class="calendar-task ${t.category} ${t.done?"done":""}" type="button"
+            <button class="calendar-task ${calendarCategoryClass(t.category)} ${t.done?"done":""}" type="button"
               onclick="openTaskDetail('${t.id}','calendar')" title="${escapeAttr(t.title)}">
               ${escapeHtml(t.title)}
             </button>

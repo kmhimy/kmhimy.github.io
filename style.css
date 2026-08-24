@@ -2529,3 +2529,187 @@ body.today-focus-mode .today-top3-item{
     flex-direction:column!important;
   }
 }
+
+/* ==========================================================================
+   V12.9 — Calendar readability
+   ========================================================================== */
+
+/* Weekday headings: previously too small/light */
+.calendar-weekdays,
+.calendar-weekday-row{
+  font-size:14px!important;
+  font-weight:700!important;
+}
+.calendar-weekdays > *,
+.calendar-weekday-row > *{
+  font-size:14px!important;
+  font-weight:700!important;
+  color:var(--muted)!important;
+}
+
+/* Day cell date and add control */
+.calendar-day-number,
+.calendar-date,
+.calendar-cell-date{
+  font-size:15px!important;
+  font-weight:700!important;
+}
+.calendar-day-add,
+.calendar-cell-add,
+.calendar-add-btn{
+  font-size:16px!important;
+  line-height:1!important;
+}
+
+/* Calendar task chips/events should be comfortably readable too. */
+.calendar-event,
+.calendar-task,
+.calendar-event-title{
+  font-size:13px!important;
+  line-height:1.4!important;
+}
+
+/* Upcoming deadline cards: emphasize actual deadline information. */
+.upcoming-item,
+.deadline-item{
+  column-gap:14px!important;
+}
+.upcoming-date,
+.deadline-date{
+  min-width:48px!important;
+}
+.upcoming-date strong,
+.deadline-date strong,
+.upcoming-day,
+.deadline-day{
+  font-size:25px!important;
+  line-height:1!important;
+  font-weight:500!important;
+}
+.upcoming-date span,
+.deadline-date span,
+.upcoming-month,
+.deadline-month{
+  font-size:12px!important;
+  line-height:1.3!important;
+}
+.upcoming-title,
+.deadline-title{
+  font-size:16px!important;
+  line-height:1.35!important;
+  font-weight:600!important;
+}
+.upcoming-meta,
+.deadline-meta{
+  margin-top:5px!important;
+  font-size:13px!important;
+  line-height:1.4!important;
+}
+
+/* Slightly improve side-panel labels without competing with titles. */
+.calendar-side .panel-kicker,
+.calendar-sidebar .panel-kicker{
+  font-size:13px!important;
+}
+
+/* ==========================================================================
+   V13 — Calendar category colors and date markers
+   ========================================================================== */
+:root{
+  --cat-research:#39735f;
+  --cat-writing:#6f5f8d;
+  --cat-admin:#a8753f;
+  --cat-research-soft:#e8f1ed;
+  --cat-writing-soft:#f0edf5;
+  --cat-admin-soft:#f7efe6;
+}
+
+.calendar-category-legend{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:18px;
+  padding:0 2px 12px;
+  font-size:13px;
+  color:var(--muted);
+}
+.calendar-category-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.calendar-category-dot,
+.calendar-day-marker{
+  display:inline-block;
+  border-radius:999px;
+}
+.calendar-category-dot{
+  width:9px;
+  height:9px;
+}
+.calendar-day-markers{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-height:10px;
+  margin:4px 0 6px;
+}
+.calendar-day-marker{
+  width:7px;
+  height:7px;
+}
+.calendar-category-dot.research,
+.calendar-day-marker.research{background:var(--cat-research)}
+.calendar-category-dot.writing,
+.calendar-day-marker.writing{background:var(--cat-writing)}
+.calendar-category-dot.admin,
+.calendar-day-marker.admin{background:var(--cat-admin)}
+
+.calendar-task.research{
+  border-left:3px solid var(--cat-research)!important;
+  background:var(--cat-research-soft)!important;
+  color:var(--cat-research)!important;
+}
+.calendar-task.writing{
+  border-left:3px solid var(--cat-writing)!important;
+  background:var(--cat-writing-soft)!important;
+  color:var(--cat-writing)!important;
+}
+.calendar-task.admin{
+  border-left:3px solid var(--cat-admin)!important;
+  background:var(--cat-admin-soft)!important;
+  color:var(--cat-admin)!important;
+}
+
+.calendar-add-btn{
+  width:24px!important;
+  height:24px!important;
+  display:inline-grid!important;
+  place-items:center!important;
+  border-radius:7px!important;
+  font-weight:800!important;
+}
+.calendar-add-btn.neutral{
+  color:#a4adb3!important;
+}
+.calendar-add-btn.research{
+  color:var(--cat-research)!important;
+  background:var(--cat-research-soft)!important;
+}
+.calendar-add-btn.writing{
+  color:var(--cat-writing)!important;
+  background:var(--cat-writing-soft)!important;
+}
+.calendar-add-btn.admin{
+  color:var(--cat-admin)!important;
+  background:var(--cat-admin-soft)!important;
+}
+.calendar-add-btn.mixed{
+  color:#fff!important;
+  background:linear-gradient(
+    135deg,
+    var(--cat-research) 0 33%,
+    var(--cat-writing) 33% 66%,
+    var(--cat-admin) 66% 100%
+  )!important;
+}
