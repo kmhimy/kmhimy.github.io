@@ -466,3 +466,28 @@ body.focus-mode .exit-focus-btn{
   .auth-card{padding:26px 22px}
   .auth-heading{font-size:32px}
 }
+
+
+/* V5 — project archive & detail */
+.project-section-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:30px 0 16px}
+.project-section-head:first-of-type{margin-top:0}.project-section-head h2{font-size:27px}
+.archive-divider{height:1px;background:var(--line);margin:46px 0 0}.archive-head{margin-top:28px}
+.compact-btn{min-height:36px;padding:0 12px;font-size:10px}
+.archive-grid .project-card{min-height:225px;background:#fafbfc}.archive-grid .project-card h3{color:#58616b}.archive-grid .project-card p{color:#8a929b}
+.project-card{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.project-card:hover{transform:translateY(-2px);box-shadow:0 14px 38px rgba(20,24,31,.06);border-color:#d7dce1}
+.project-card-actions{display:flex;gap:4px;align-items:center}.project-action-btn{border:0;background:transparent;color:#a4acb5;font-size:10px;padding:3px 5px;border-radius:6px}
+.project-action-btn:hover{background:#f0f2f4;color:#59636d}.project-action-btn.archive:hover{color:#80672e;background:#f6f1e5}.project-action-btn.restore:hover{color:#466f59;background:#edf4ef}.project-action-btn.delete:hover{color:var(--red);background:#f8eeee}
+.status-dot.archived{background:#8a929b}
+.status-badge{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;background:#eef1f4;color:#68727d;font-size:9px;font-weight:700}
+.status-badge.active{background:#edf4ef;color:#4e775f}.status-badge.paused{background:#f6f1e6;color:#80672f}.status-badge.idea{background:#edf2f7;color:#607992}.status-badge.archived{background:#eef0f2;color:#727b84}
+.detail-toolbar{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}.detail-actions{display:flex;gap:8px}
+.project-detail-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.5fr);gap:40px;align-items:center}
+.detail-status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.detail-date-meta{color:#9aa2aa;font-size:10px}
+.detail-project-name{margin-top:16px;font-size:42px}.detail-project-desc{max-width:760px;margin:13px 0 0;color:var(--muted);font-size:13px;line-height:1.7}
+.detail-progress-box{border-left:1px solid var(--line);padding-left:32px}.detail-progress-number{font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;font-size:54px;line-height:1;letter-spacing:-.04em}
+.detail-progress-label{margin-top:6px;color:var(--muted);font-size:10px}.detail-progress-track{height:7px;margin-top:18px;overflow:hidden;border-radius:999px;background:#edf0f2}.detail-progress-track span{display:block;height:100%;border-radius:999px;background:#647d8f}.detail-progress-meta{margin-top:8px;color:#939ba4;font-size:9px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}.detail-task-done{opacity:.72}.detail-task-done .item-title{text-decoration:line-through;color:#8f979f}
+.project-summary-panel{margin-top:20px}.project-summary-panel textarea{width:100%;min-height:210px;margin-top:18px;padding:15px;border:1px solid var(--line);border-radius:12px;background:#fbfcfd;color:var(--text);resize:vertical;outline:none;line-height:1.75}.project-summary-panel textarea:focus{border-color:#9eb6c6;box-shadow:0 0 0 3px rgba(37,95,132,.06)}
+@media(max-width:980px){.project-detail-hero{grid-template-columns:1fr}.detail-progress-box{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:24px}.detail-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.detail-toolbar{align-items:flex-start;flex-direction:column}.detail-project-name{font-size:34px}}

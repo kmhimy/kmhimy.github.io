@@ -7,7 +7,7 @@
   <meta name="description" content="个人科研工作台：今日重点、任务、科研项目、科研日志与周总结。" />
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="style.css?v=3.0.0" />
+  <link rel="stylesheet" href="style.css?v=5.0.0" />
 </head>
 <body>
 
@@ -238,11 +238,81 @@
         <div class="section-intro">
           <div>
             <div class="panel-kicker">科研项目</div>
-            <p>每个项目对应一条真实研究主线。任务与科研日志都可以归属到项目。</p>
+            <p>项目对应一条真实研究主线。完成后归档，任务、科研日志和项目总结都会永久保留。</p>
           </div>
           <button id="addProjectBtn" class="primary-btn" type="button">+ 新建项目</button>
         </div>
+
+        <div class="project-section-head">
+          <div>
+            <div class="panel-kicker">CURRENT</div>
+            <h2>当前项目</h2>
+          </div>
+          <span id="currentProjectCount" class="count-pill">0</span>
+        </div>
         <div id="projectGrid" class="project-grid"></div>
+
+        <div class="archive-divider"></div>
+
+        <div class="project-section-head archive-head">
+          <div>
+            <div class="panel-kicker">ARCHIVE</div>
+            <h2>已归档项目</h2>
+          </div>
+          <button id="toggleArchiveBtn" class="ghost-btn compact-btn" type="button">展开归档</button>
+        </div>
+
+        <div id="archiveWrap" hidden>
+          <div id="archiveGrid" class="project-grid archive-grid"></div>
+        </div>
+      </section>
+
+      <section id="view-project-detail" class="view">
+        <div class="detail-toolbar">
+          <button id="backToProjectsBtn" class="ghost-btn" type="button">← 返回科研项目</button>
+          <div class="detail-actions">
+            <button id="detailArchiveBtn" class="ghost-btn" type="button">归档项目</button>
+            <button id="detailRestoreBtn" class="ghost-btn" type="button" hidden>恢复项目</button>
+          </div>
+        </div>
+
+        <div class="project-detail-hero panel">
+          <div class="detail-hero-main">
+            <div class="detail-status-row">
+              <span id="detailStatusBadge" class="status-badge">进行中</span>
+              <span id="detailDateMeta" class="detail-date-meta"></span>
+            </div>
+            <h2 id="detailProjectName" class="detail-project-name">项目名称</h2>
+            <p id="detailProjectDesc" class="detail-project-desc">项目说明</p>
+          </div>
+
+          <div class="detail-progress-box">
+            <div class="detail-progress-number" id="detailProgressNumber">0%</div>
+            <div class="detail-progress-label">任务完成率</div>
+            <div class="detail-progress-track"><span id="detailProgressBar" style="width:0%"></span></div>
+            <div class="detail-progress-meta" id="detailProgressMeta">0 完成 · 0 待办</div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <article class="panel">
+            <div class="panel-head"><div><div class="panel-kicker">TASKS</div><h2>项目任务</h2></div></div>
+            <div id="detailTaskList" class="task-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><div class="panel-kicker">RESEARCH LOG</div><h2>科研日志</h2></div></div>
+            <div id="detailLogList" class="log-list"></div>
+          </article>
+        </div>
+
+        <article class="panel project-summary-panel">
+          <div class="panel-head">
+            <div><div class="panel-kicker">PROJECT SUMMARY</div><h2>项目总结</h2></div>
+            <span id="projectSummarySaved" class="saved-indicator">已保存</span>
+          </div>
+          <textarea id="projectSummaryInput" placeholder="记录这个项目最终得到了什么、关键结论是什么、哪些问题仍未解决、以后重新打开时最需要知道什么……"></textarea>
+        </article>
       </section>
 
       <section id="view-log" class="view">
@@ -423,8 +493,8 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=4.0.0"></script>
+  <script src="config.js?v=5.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=4.0.0"></script>
+  <script src="app.js?v=5.0.0"></script>
 </body>
 </html>

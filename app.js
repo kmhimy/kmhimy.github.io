@@ -1,9 +1,12 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 2;
+const APP_VERSION = 5;
 
 const state = loadState();
 let activeFilter = "all";
 let noteTimer = null;
+let currentProjectId = null;
+let archiveExpanded = false;
+let projectSummaryTimer = null;
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -52,7 +55,26 @@ const els = {
   cancelTaskBtn: document.getElementById("cancelTaskBtn"),
 
   projectGrid: document.getElementById("projectGrid"),
+  archiveGrid: document.getElementById("archiveGrid"),
+  archiveWrap: document.getElementById("archiveWrap"),
+  toggleArchiveBtn: document.getElementById("toggleArchiveBtn"),
+  currentProjectCount: document.getElementById("currentProjectCount"),
   addProjectBtn: document.getElementById("addProjectBtn"),
+
+  backToProjectsBtn: document.getElementById("backToProjectsBtn"),
+  detailArchiveBtn: document.getElementById("detailArchiveBtn"),
+  detailRestoreBtn: document.getElementById("detailRestoreBtn"),
+  detailStatusBadge: document.getElementById("detailStatusBadge"),
+  detailDateMeta: document.getElementById("detailDateMeta"),
+  detailProjectName: document.getElementById("detailProjectName"),
+  detailProjectDesc: document.getElementById("detailProjectDesc"),
+  detailProgressNumber: document.getElementById("detailProgressNumber"),
+  detailProgressBar: document.getElementById("detailProgressBar"),
+  detailProgressMeta: document.getElementById("detailProgressMeta"),
+  detailTaskList: document.getElementById("detailTaskList"),
+  detailLogList: document.getElementById("detailLogList"),
+  projectSummaryInput: document.getElementById("projectSummaryInput"),
+  projectSummarySaved: document.getElementById("projectSummarySaved"),
   projectDialog: document.getElementById("projectDialog"),
   projectForm: document.getElementById("projectForm"),
   projectName: document.getElementById("projectName"),
@@ -145,6 +167,13 @@ function migrateToV2(s){
   if(!s.settings || typeof s.settings !== "object") s.settings = {focusMode:false};
   if(!s.meta || typeof s.meta !== "object") s.meta = {localUpdatedAt:null};
   if(!("localUpdatedAt" in s.meta)) s.meta.localUpdatedAt = null;
+
+  // V5：给旧项目补齐归档与总结字段。
+  s.projects.forEach(p=>{
+    if(!("archivedAt" in p)) p.archivedAt = null;
+    if(!("summary" in p)) p.summary = "";
+    if(p.status==="archived" && !p.archivedAt) p.archivedAt = new Date().toISOString();
+  });
 
   // 给旧任务补齐 V2 字段。
   s.tasks.forEach(t=>{
@@ -376,6 +405,36 @@ function bindEvents(){
   els.closeProjectDialogBtn.addEventListener("click", closeProjectDialog);
   els.cancelProjectBtn.addEventListener("click", closeProjectDialog);
 
+  els.toggleArchiveBtn.addEventListener("click", ()=>{
+    archiveExpanded = !archiveExpanded;
+    els.archiveWrap.hidden = !archiveExpanded;
+    els.toggleArchiveBtn.textContent = archiveExpanded ? "收起归档" : "展开归档";
+  });
+
+  els.backToProjectsBtn.addEventListener("click", ()=>{
+    currentProjectId = null;
+    switchView("projects");
+  });
+
+  els.detailArchiveBtn.addEventListener("click", ()=>{
+    if(currentProjectId) archiveProject(currentProjectId,true);
+  });
+  els.detailRestoreBtn.addEventListener("click", ()=>{
+    if(currentProjectId) restoreProject(currentProjectId,true);
+  });
+
+  els.projectSummaryInput.addEventListener("input", ()=>{
+    clearTimeout(projectSummaryTimer);
+    projectSummaryTimer=setTimeout(()=>{
+      const p=state.projects.find(x=>x.id===currentProjectId);
+      if(!p) return;
+      p.summary=els.projectSummaryInput.value;
+      saveState();
+      els.projectSummarySaved.classList.add("show");
+      setTimeout(()=>els.projectSummarySaved.classList.remove("show"),900);
+    },350);
+  });
+
   els.projectForm.addEventListener("submit", e=>{
     e.preventDefault();
     const name=els.projectName.value.trim();
@@ -389,7 +448,9 @@ function bindEvents(){
       name,
       description:els.projectDesc.value.trim(),
       status:els.projectStatus.value,
-      createdAt:new Date().toISOString()
+      createdAt:new Date().toISOString(),
+      archivedAt:null,
+      summary:""
     });
 
     saveState();
@@ -896,6 +957,7 @@ function switchView(name){
   const titles={
     today:"今日",
     projects:"科研项目",
+    "project-detail":"项目详情",
     log:"科研日志",
     review:"本周总结"
   };
@@ -922,6 +984,7 @@ function renderAll(){
   renderProjectOptions();
   renderLogs();
   renderReview();
+  if(currentProjectId) renderProjectDetail();
 }
 
 function renderToday(){
@@ -1033,47 +1096,53 @@ function renderDone(){
 }
 
 function renderProjects(){
-  const items=[...state.projects].sort((a,b)=>{
-    const order={active:0,idea:1,paused:2};
-    return (order[a.status]??9)-(order[b.status]??9) || a.name.localeCompare(b.name);
-  });
+  const current=state.projects
+    .filter(p=>p.status!=="archived")
+    .sort((a,b)=>{
+      const order={active:0,idea:1,paused:2};
+      return (order[a.status]??9)-(order[b.status]??9) || a.name.localeCompare(b.name);
+    });
+  const archived=state.projects
+    .filter(p=>p.status==="archived")
+    .sort((a,b)=>(b.archivedAt||"").localeCompare(a.archivedAt||""));
 
-  if(!items.length){
-    els.projectGrid.innerHTML=`<div class="panel empty">还没有科研项目。建议按真实研究主线建立项目，而不是按零碎任务建项目。</div>`;
-    return;
-  }
+  els.currentProjectCount.textContent=current.length;
+  els.projectGrid.innerHTML=current.length
+    ? current.map(p=>projectCardHtml(p,false)).join("")
+    : `<div class="panel empty">当前没有科研项目。新建项目，或者从下方归档区恢复一个项目。</div>`;
+  els.archiveGrid.innerHTML=archived.length
+    ? archived.map(p=>projectCardHtml(p,true)).join("")
+    : `<div class="panel empty">还没有归档项目。项目完成后可以归档，所有任务和科研日志都会保留。</div>`;
+}
 
-  els.projectGrid.innerHTML=items.map(p=>{
-    const tasks=state.tasks.filter(t=>t.projectId===p.id);
-    const open=tasks.filter(t=>!t.done).length;
-    const done=tasks.filter(t=>t.done).length;
-    const logs=state.logs.filter(l=>l.projectId===p.id).length;
-    const total=open+done;
-    const progress=total?Math.round(done/total*100):0;
-
-    return `
-      <article class="project-card">
-        <div class="project-top">
-          <div class="status-dot ${p.status}" title="${labelStatus(p.status)}"></div>
-          <button class="project-delete" type="button" onclick="deleteProject('${p.id}')" title="删除项目">×</button>
+function projectCardHtml(p,isArchived){
+  const tasks=state.tasks.filter(t=>t.projectId===p.id);
+  const open=tasks.filter(t=>!t.done).length;
+  const done=tasks.filter(t=>t.done).length;
+  const logs=state.logs.filter(l=>l.projectId===p.id).length;
+  const total=open+done;
+  const progress=total?Math.round(done/total*100):0;
+  return `
+    <article class="project-card" onclick="openProjectDetail('${p.id}')">
+      <div class="project-top">
+        <div class="status-dot ${p.status}" title="${labelStatus(p.status)}"></div>
+        <div class="project-card-actions" onclick="event.stopPropagation()">
+          ${isArchived
+            ? `<button class="project-action-btn restore" type="button" onclick="restoreProject('${p.id}')">恢复</button>`
+            : `<button class="project-action-btn archive" type="button" onclick="archiveProject('${p.id}')">归档</button>`}
+          <button class="project-action-btn delete" type="button" onclick="deleteProject('${p.id}')">删除</button>
         </div>
-        <h3>${escapeHtml(p.name)}</h3>
-        <p>${escapeHtml(p.description || "暂无说明。")}</p>
-        <div class="project-progress" title="任务完成率 ${progress}%">
-          <span style="width:${progress}%"></span>
-        </div>
-        <div class="project-bottom">
-          <span>${open} 待办 · ${done} 完成</span>
-          <span>${logs} 篇日志 · ${progress}%</span>
-        </div>
-      </article>
-    `;
-  }).join("");
+      </div>
+      <h3>${escapeHtml(p.name)}</h3>
+      <p>${escapeHtml(p.description||"暂无说明。")}</p>
+      <div class="project-progress" title="任务完成率 ${progress}%"><span style="width:${progress}%"></span></div>
+      <div class="project-bottom"><span>${open} 待办 · ${done} 完成</span><span>${logs} 篇日志 · ${progress}%</span></div>
+    </article>`;
 }
 
 function renderProjectOptions(){
   const options=[`<option value="">未归属项目</option>`]
-    .concat(state.projects.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`))
+    .concat(state.projects.filter(p=>p.status!=="archived").map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`))
     .join("");
 
   const taskCurrent=els.taskProject.value;
@@ -1222,7 +1291,7 @@ function labelCategory(c){
 }
 
 function labelStatus(s){
-  return ({active:"进行中",paused:"暂停",idea:"想法"})[s] || s;
+  return ({active:"进行中",paused:"暂停",idea:"想法",archived:"已归档"})[s] || s;
 }
 
 function dueBadge(due){
@@ -1280,15 +1349,78 @@ function deleteTask(id){
   renderAll();
 }
 
+function openProjectDetail(id){
+  const p=state.projects.find(x=>x.id===id);
+  if(!p) return;
+  currentProjectId=id;
+  switchView("project-detail");
+  renderProjectDetail();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderProjectDetail(){
+  const p=state.projects.find(x=>x.id===currentProjectId);
+  if(!p){currentProjectId=null;switchView("projects");return;}
+  const tasks=state.tasks.filter(t=>t.projectId===p.id).sort((a,b)=>{
+    if(a.done!==b.done) return Number(a.done)-Number(b.done);
+    if(a.due&&b.due) return a.due.localeCompare(b.due);
+    if(a.due) return -1;if(b.due) return 1;
+    return (b.createdAt||"").localeCompare(a.createdAt||"");
+  });
+  const logs=state.logs.filter(l=>l.projectId===p.id).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+  const done=tasks.filter(t=>t.done).length, open=tasks.length-done;
+  const progress=tasks.length?Math.round(done/tasks.length*100):0;
+  els.detailProjectName.textContent=p.name;
+  els.detailProjectDesc.textContent=p.description||"暂无项目说明。";
+  els.detailStatusBadge.textContent=labelStatus(p.status);
+  els.detailStatusBadge.className=`status-badge ${p.status}`;
+  const fmt=d=>new Intl.DateTimeFormat("zh-CN",{year:"numeric",month:"numeric",day:"numeric"}).format(new Date(d));
+  const created=p.createdAt?fmt(p.createdAt):"未知";
+  const archived=p.archivedAt?fmt(p.archivedAt):null;
+  els.detailDateMeta.textContent=p.status==="archived"?`创建 ${created} · 归档 ${archived||"—"}`:`创建 ${created}`;
+  els.detailProgressNumber.textContent=`${progress}%`;
+  els.detailProgressBar.style.width=`${progress}%`;
+  els.detailProgressMeta.textContent=`${done} 完成 · ${open} 待办`;
+  els.detailArchiveBtn.hidden=p.status==="archived";
+  els.detailRestoreBtn.hidden=p.status!=="archived";
+  els.projectSummaryInput.value=p.summary||"";
+
+  els.detailTaskList.innerHTML=tasks.length?tasks.map(t=>`
+    <div class="task-item ${t.done?"detail-task-done":""}">
+      ${t.done?`<div class="done-icon">✓</div>`:`<input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">`}
+      <div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">
+        <span class="badge ${t.category}">${labelCategory(t.category)}</span>${t.due?dueBadge(t.due):""}${t.priorityDate===localDateKey()?`<span class="badge today">今日重点</span>`:""}
+      </div></div>
+      ${t.done?`<button class="delete-btn" type="button" onclick="toggleTask('${t.id}', false)" title="恢复为待办">↶</button>`:""}
+    </div>`).join(""):`<div class="empty">这个项目还没有任务。</div>`;
+
+  els.detailLogList.innerHTML=logs.length?logs.map(l=>`
+    <article class="log-entry"><div class="log-entry-head"><div class="log-entry-title">${escapeHtml(l.topic)}</div><div class="log-entry-date">${fmt(l.createdAt)}</div></div>
+    <dl>${l.progress?`<div><dt>进展</dt><dd>${escapeHtml(l.progress)}</dd></div>`:""}${l.finding?`<div><dt>关键发现</dt><dd>${escapeHtml(l.finding)}</dd></div>`:""}${l.next?`<div><dt>下一步</dt><dd>${escapeHtml(l.next)}</dd></div>`:""}</dl></article>`).join(""):`<div class="empty">这个项目还没有科研日志。</div>`;
+}
+
+function archiveProject(id,fromDetail=false){
+  const p=state.projects.find(x=>x.id===id);if(!p||p.status==="archived") return;
+  const open=state.tasks.filter(t=>t.projectId===id&&!t.done).length;
+  const msg=open?`这个项目还有 ${open} 个未完成任务。仍然归档吗？任务和科研日志都会保留。`:"确定归档这个项目吗？所有任务、科研日志和项目总结都会保留。";
+  if(!confirm(msg)) return;
+  p.status="archived";p.archivedAt=new Date().toISOString();saveState();
+  archiveExpanded=true;els.archiveWrap.hidden=false;els.toggleArchiveBtn.textContent="收起归档";
+  renderAll();if(fromDetail) renderProjectDetail();toast("项目已归档");
+}
+
+function restoreProject(id,fromDetail=false){
+  const p=state.projects.find(x=>x.id===id);if(!p||p.status!=="archived") return;
+  p.status="active";p.archivedAt=null;saveState();renderAll();if(fromDetail) renderProjectDetail();toast("项目已恢复为进行中");
+}
+
 function deleteProject(id){
-  if(!confirm("确定删除这个项目吗？相关任务和科研日志会保留，但不再归属该项目。")) return;
-
+  if(!confirm("确定永久删除这个项目吗？建议已完成项目优先使用“归档”。删除后，相关任务和科研日志会保留，但会变成未归属项目。")) return;
   state.projects=state.projects.filter(x=>x.id!==id);
-  state.tasks.forEach(t=>{ if(t.projectId===id) t.projectId=null; });
-  state.logs.forEach(l=>{ if(l.projectId===id) l.projectId=null; });
-
-  saveState();
-  renderAll();
+  state.tasks.forEach(t=>{if(t.projectId===id)t.projectId=null;});
+  state.logs.forEach(l=>{if(l.projectId===id)l.projectId=null;});
+  if(currentProjectId===id){currentProjectId=null;switchView("projects");}
+  saveState();renderAll();
 }
 
 function deleteLog(id){
@@ -1352,6 +1484,9 @@ function escapeHtml(value){
   })[ch]);
 }
 
+window.openProjectDetail=openProjectDetail;
+window.archiveProject=archiveProject;
+window.restoreProject=restoreProject;
 window.togglePriority=togglePriority;
 window.removePriority=removePriority;
 window.toggleTask=toggleTask;
