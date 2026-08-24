@@ -20,7 +20,7 @@
 html{scroll-behavior:smooth}
 body{
   margin:0;
-  font-family:"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-family:"Inter","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--text);
   background:var(--bg);
   -webkit-font-smoothing:antialiased;
@@ -48,7 +48,7 @@ button{cursor:pointer}
   width:42px;height:42px;border-radius:13px;
   display:grid;place-items:center;
   background:#fff;color:#111821;
-  font-family:"Newsreader",serif;font-size:22px;font-weight:600;
+  font-family:"Newsreader","Songti SC","STSong","SimSun",serif;font-size:22px;font-weight:600;
 }
 .brand-title{font-weight:700;letter-spacing:-.02em}
 .brand-subtitle{margin-top:2px;color:#909ca9;font-size:11px}
@@ -84,12 +84,12 @@ button{cursor:pointer}
 h1,h2,h3,p{margin-top:0}
 h1{
   margin:7px 0 0;
-  font-family:"Newsreader",Georgia,serif;
+  font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;
   font-size:48px;line-height:1;font-weight:600;letter-spacing:-.035em;
 }
 h2{
   margin:7px 0 0;
-  font-family:"Newsreader",Georgia,serif;
+  font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;
   font-size:27px;line-height:1.15;font-weight:600;letter-spacing:-.025em;
 }
 .top-actions{display:flex;gap:9px}
@@ -171,7 +171,7 @@ h2{
 .stat-panel{display:flex;flex-direction:column;justify-content:center}
 .big-number{
   margin-top:24px;
-  font-family:"Newsreader",Georgia,serif;
+  font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;
   font-size:82px;line-height:.9;letter-spacing:-.05em;
 }
 .stat-label{margin-top:7px;color:var(--muted);font-size:12px}
@@ -225,7 +225,7 @@ h2{
 .status-dot.paused{background:#a08349}
 .status-dot.idea{background:#6681a0}
 .project-card h3{
-  margin:40px 0 9px;font-family:"Newsreader",Georgia,serif;
+  margin:40px 0 9px;font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;
   font-size:25px;line-height:1.2;letter-spacing:-.02em;
 }
 .project-card p{color:var(--muted);font-size:12px;line-height:1.6}
@@ -265,7 +265,7 @@ h2{
 }
 .metric-card span{display:block;color:var(--muted);font-size:10px}
 .metric-card strong{
-  display:block;margin-top:8px;font-family:"Newsreader",Georgia,serif;font-size:42px;line-height:1;
+  display:block;margin-top:8px;font-family:"Newsreader","Songti SC","STSong","SimSun",Georgia,serif;font-size:42px;line-height:1;
 }
 .compact .task-item{padding:9px 0}
 

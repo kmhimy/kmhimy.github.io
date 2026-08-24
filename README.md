@@ -1,77 +1,54 @@
-# Research Desk
+# 科研工作台 Research Desk
 
-A lightweight personal academic dashboard for daily use.
+这是一个适合每天使用的个人科研工作台。
 
-## What works now
+## 当前功能
 
-- **Today's Focus** — keep up to three priorities for the day.
-- **Tasks** — add, categorize, assign to projects, set due dates, complete and restore.
-- **Done Today** — automatically records completed tasks.
-- **Projects** — maintain a short list of active research threads.
-- **Research Log** — record question/topic, progress, finding, and next step.
-- **Quick Note** — automatically saves today's scratch note.
-- **Weekly Review** — summarizes completed tasks, logs, open work and active projects.
-- **Export / Import** — save the entire workspace as JSON.
-- **Focus Mode** — hides everything except today's priorities.
-- **Offline support** — basic PWA/service-worker cache.
+- **今日重点**：每天最多保留三件最重要的事情
+- **待办事项**：支持科研 / 写作 / 事务 / 其他分类
+- **今日完成**：自动记录当天完成的任务
+- **科研项目**：管理不同研究主线
+- **科研日志**：记录“问题 → 进展 → 关键发现 → 下一步”
+- **随手记**：自动保存当天的临时想法
+- **本周总结**：自动汇总完成事项、日志和未完成任务
+- **导出 / 导入备份**：将全部数据保存为 JSON 文件
+- **专注模式**：只保留“今日重点”
+- **基础离线支持**
 
-## Important: where data is stored
+## 数据保存位置
 
-Version 1 stores data in your browser using `localStorage`.
+当前 V1 使用浏览器 `localStorage` 保存数据。
 
-That means:
+因此：
 
-- It works without a server.
-- Your data persists in the same browser.
-- It does **not** automatically sync between computers or phones.
-- Browser data can be lost if you clear site storage.
+- 不需要服务器即可使用
+- 同一浏览器中数据会持续保留
+- 不会自动同步到其他电脑或手机
+- 清除浏览器网站数据后可能丢失
 
-Use **Export data** regularly until cloud sync is added.
+在加入云同步前，建议定期点击“导出备份”。
 
-## Run locally
+## GitHub Pages 更新方法
 
-The simplest reliable way:
+将以下文件上传并覆盖 GitHub 仓库根目录中的旧文件：
 
-```bash
-python -m http.server 8000
-```
+- `index.html`
+- `style.css`
+- `app.js`
+- `manifest.webmanifest`
+- `service-worker.js`
+- `README.md`
 
-Open:
+GitHub Pages 通常会在数十秒到几分钟后自动更新。
 
-```text
-http://localhost:8000
-```
+## 后续建议
 
-Opening `index.html` directly will work for most features, but PWA/offline caching needs an HTTP server.
+正式长期使用时，建议加入：
 
-## Deploy free
-
-You can upload this folder to:
-
-- GitHub Pages
-- Cloudflare Pages
-- Netlify
-- Vercel
-
-For a private dashboard, do not publish sensitive research notes publicly. Before using this on a public URL, add authentication and cloud storage.
-
-## Recommended Version 2
-
-Use:
-
-- Frontend: Next.js or the existing static UI
-- Auth: Supabase Auth
-- Database: Supabase Postgres
-- Deployment: Cloudflare Pages or Vercel
-- Private address: `desk.yourdomain.com`
-
-Version 2 should add:
-
-1. Login
-2. Cross-device sync
-3. Daily automatic archive
-4. Search across logs
-5. Project pages
-6. Markdown / LaTeX notes
-7. Weekly and monthly summaries
-8. Optional calendar integration
+1. 登录保护
+2. 手机 / 电脑云同步
+3. Markdown 与 LaTeX 科研日志
+4. 全局搜索
+5. 项目独立页面
+6. 周总结 / 月总结
+7. 自动备份

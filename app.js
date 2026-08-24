@@ -21,15 +21,15 @@ const els = {
   filters: [...document.querySelectorAll(".filter")],
   quickNote: document.getElementById("quickNote"),
   noteSaved: document.getElementById("noteSaved"),
-  addTaskTopBtn: document.getElementById("addTaskTopBtn"),
-  addTaskInlineBtn: document.getElementById("addTaskInlineBtn"),
+  add任务TopBtn: document.getElementById("add任务TopBtn"),
+  add任务InlineBtn: document.getElementById("add任务InlineBtn"),
   taskDialog: document.getElementById("taskDialog"),
   taskForm: document.getElementById("taskForm"),
   taskTitle: document.getElementById("taskTitle"),
   taskCategory: document.getElementById("taskCategory"),
   taskProject: document.getElementById("taskProject"),
   taskDue: document.getElementById("taskDue"),
-  saveTaskBtn: document.getElementById("saveTaskBtn"),
+  save任务Btn: document.getElementById("save任务Btn"),
   projectGrid: document.getElementById("projectGrid"),
   addProjectBtn: document.getElementById("addProjectBtn"),
   projectDialog: document.getElementById("projectDialog"),
@@ -98,7 +98,7 @@ function localDateKey(date = new Date()){
 }
 
 function fmtDate(date = new Date()){
-  return new Intl.DateTimeFormat("en-US",{
+  return new Intl.DateTimeFormat("zh-CN",{
     weekday:"long", month:"long", day:"numeric", year:"numeric"
   }).format(date);
 }
@@ -106,7 +106,7 @@ function fmtDate(date = new Date()){
 function shortDate(dateString){
   if(!dateString) return "";
   const d = new Date(dateString + "T12:00:00");
-  return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric"}).format(d);
+  return new Intl.DateTimeFormat("zh-CN",{month:"short",day:"numeric"}).format(d);
 }
 
 function startOfWeek(date = new Date()){
@@ -123,7 +123,7 @@ function isThisWeek(iso){
 }
 
 function projectName(id){
-  return state.projects.find(p=>p.id===id)?.name || "No project";
+  return state.projects.find(p=>p.id===id)?.name || "未归属项目";
 }
 
 function init(){
@@ -148,7 +148,7 @@ function bindEvents(){
     if(e.key==="2") switchView("projects");
     if(e.key==="3") switchView("log");
     if(e.key==="4") switchView("review");
-    if(e.key.toLowerCase()==="n") openTaskDialog();
+    if(e.key.toLowerCase()==="n") open任务Dialog();
   });
 
   els.priorityForm.addEventListener("submit", e=>{
@@ -156,7 +156,7 @@ function bindEvents(){
     const title = els.priorityInput.value.trim();
     if(!title) return;
     if(todayPriorities().filter(x=>!x.done).length >= 3){
-      toast("Keep today's focus to three open items.");
+      toast("今日重点最多保留三项。");
       return;
     }
     state.priorities.push({
@@ -170,10 +170,10 @@ function bindEvents(){
     saveState(); renderToday();
   });
 
-  els.addTaskTopBtn.addEventListener("click",openTaskDialog);
-  els.addTaskInlineBtn.addEventListener("click",openTaskDialog);
+  els.add任务TopBtn.addEventListener("click",open任务Dialog);
+  els.add任务InlineBtn.addEventListener("click",open任务Dialog);
 
-  els.saveTaskBtn.addEventListener("click", e=>{
+  els.save任务Btn.addEventListener("click", e=>{
     e.preventDefault();
     const title=els.taskTitle.value.trim();
     if(!title){els.taskTitle.focus();return;}
@@ -191,13 +191,13 @@ function bindEvents(){
     els.taskForm.reset();
     els.taskDialog.close();
     renderAll();
-    toast("Task added");
+    toast("任务已添加");
   });
 
   els.filters.forEach(btn=>btn.addEventListener("click",()=>{
     activeFilter=btn.dataset.filter;
     els.filters.forEach(x=>x.classList.toggle("active",x===btn));
-    renderTasks();
+    render任务s();
   }));
 
   els.quickNote.addEventListener("input",()=>{
@@ -227,7 +227,7 @@ function bindEvents(){
     els.projectForm.reset();
     els.projectDialog.close();
     renderAll();
-    toast("Project created");
+    toast("项目已创建");
   });
 
   els.logForm.addEventListener("submit",e=>{
@@ -244,16 +244,16 @@ function bindEvents(){
       createdAt:new Date().toISOString()
     });
     els.logForm.reset();
-    saveState(); renderAll(); toast("Research log saved");
+    saveState(); renderAll(); toast("科研日志已保存");
   });
 
   els.copyReviewBtn.addEventListener("click",async()=>{
     const text=makeReviewText();
     try{
       await navigator.clipboard.writeText(text);
-      toast("Weekly summary copied");
+      toast("本周总结已复制");
     }catch{
-      toast("Copy failed — use Export if needed.");
+      toast("复制失败，可使用导出备份。");
     }
   });
 
@@ -270,8 +270,8 @@ function bindEvents(){
 function switchView(name){
   els.navItems.forEach(x=>x.classList.toggle("active",x.dataset.view===name));
   els.views.forEach(x=>x.classList.toggle("active",x.id===`view-${name}`));
-  const titles={today:"Today",projects:"Projects",log:"Research Log",review:"Weekly Review"};
-  els.pageTitle.textContent=titles[name]||"Research Desk";
+  const titles={today:"今日",projects:"科研项目",log:"科研日志",review:"本周总结"};
+  els.pageTitle.textContent=titles[name]||"科研工作台";
   if(name==="review") renderReview();
 }
 
@@ -279,7 +279,7 @@ function todayPriorities(){
   return state.priorities.filter(p=>p.date===localDateKey());
 }
 
-function todayDoneTasks(){
+function todayDone任务s(){
   return state.tasks.filter(t=>t.done && t.completedAt && localDateKey(new Date(t.completedAt))===localDateKey());
 }
 
@@ -293,9 +293,9 @@ function renderAll(){
 
 function renderToday(){
   renderPriorities();
-  renderTasks();
+  render任务s();
   renderDone();
-  els.doneCount.textContent=todayDoneTasks().length;
+  els.doneCount.textContent=todayDone任务s().length;
   els.openCount.textContent=state.tasks.filter(t=>!t.done).length;
   els.projectCount.textContent=state.projects.filter(p=>p.status==="active").length;
 }
@@ -304,7 +304,7 @@ function renderPriorities(){
   const items=todayPriorities();
   els.priorityCount.textContent=`${items.filter(x=>x.done).length} / 3`;
   if(!items.length){
-    els.priorityList.innerHTML=`<div class="empty">No focus items yet. Choose no more than three things that would make today meaningful.</div>`;
+    els.priorityList.innerHTML=`<div class="empty">还没有设置今日重点。建议只保留最重要的三件事。</div>`;
     return;
   }
   els.priorityList.innerHTML=items.map(p=>`
@@ -317,7 +317,7 @@ function renderPriorities(){
     </div>`).join("");
 }
 
-function renderTasks(){
+function render任务s(){
   let items=state.tasks.filter(t=>!t.done);
   if(activeFilter!=="all") items=items.filter(t=>t.category===activeFilter);
   items.sort((a,b)=>{
@@ -328,12 +328,12 @@ function renderTasks(){
   });
 
   if(!items.length){
-    els.taskList.innerHTML=`<div class="empty">No open tasks here.</div>`;
+    els.taskList.innerHTML=`<div class="empty">这里暂时没有待办事项。</div>`;
     return;
   }
   els.taskList.innerHTML=items.map(t=>`
     <div class="task-item">
-      <input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">
+      <input class="check" type="checkbox" onchange="toggle任务('${t.id}', true)">
       <div class="item-text">
         <div class="item-title">${escapeHtml(t.title)}</div>
         <div class="item-meta">
@@ -342,14 +342,14 @@ function renderTasks(){
           ${t.due?`<span>Due ${shortDate(t.due)}</span>`:""}
         </div>
       </div>
-      <button class="delete-btn" onclick="deleteTask('${t.id}')" title="Delete">×</button>
+      <button class="delete-btn" onclick="delete任务('${t.id}')" title="Delete">×</button>
     </div>`).join("");
 }
 
 function renderDone(){
-  const items=todayDoneTasks().sort((a,b)=>b.completedAt.localeCompare(a.completedAt));
+  const items=todayDone任务s().sort((a,b)=>b.completedAt.localeCompare(a.completedAt));
   if(!items.length){
-    els.doneList.innerHTML=`<div class="empty">Nothing completed yet. This section becomes your evidence of progress.</div>`;
+    els.doneList.innerHTML=`<div class="empty">今天还没有完成事项。完成后的任务会记录在这里。</div>`;
     return;
   }
   els.doneList.innerHTML=items.map(t=>`
@@ -361,14 +361,14 @@ function renderDone(){
           ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
         </div>
       </div>
-      <button class="delete-btn" onclick="toggleTask('${t.id}', false)" title="Restore">↶</button>
+      <button class="delete-btn" onclick="toggle任务('${t.id}', false)" title="Restore">↶</button>
     </div>`).join("");
 }
 
 function renderProjects(){
   const items=[...state.projects].sort((a,b)=>a.name.localeCompare(b.name));
   if(!items.length){
-    els.projectGrid.innerHTML=`<div class="panel empty">Create one project for each real research thread. Keep the list short.</div>`;
+    els.projectGrid.innerHTML=`<div class="panel empty">为每条真正的科研主线建立一个项目，项目数量尽量保持精简。</div>`;
     return;
   }
   els.projectGrid.innerHTML=items.map(p=>{
@@ -382,7 +382,7 @@ function renderProjects(){
           <button class="project-delete" onclick="deleteProject('${p.id}')" title="Delete project">×</button>
         </div>
         <h3>${escapeHtml(p.name)}</h3>
-        <p>${escapeHtml(p.description || "No description yet.")}</p>
+        <p>${escapeHtml(p.description || "暂无说明。")}</p>
         <div class="project-bottom">
           <span>${open} open · ${done} done</span>
           <span>${logs} logs</span>
@@ -392,7 +392,7 @@ function renderProjects(){
 }
 
 function renderProjectOptions(){
-  const options=[`<option value="">No project</option>`]
+  const options=[`<option value="">未归属项目</option>`]
     .concat(state.projects.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`))
     .join("");
   els.taskProject.innerHTML=options;
@@ -401,7 +401,7 @@ function renderProjectOptions(){
 
 function renderLogs(){
   if(!state.logs.length){
-    els.logList.innerHTML=`<div class="empty">Your research history will appear here. Keep entries short and factual.</div>`;
+    els.logList.innerHTML=`<div class="empty">你的科研过程会记录在这里。建议简洁、客观地记录。</div>`;
     return;
   }
   els.logList.innerHTML=state.logs.slice(0,30).map(l=>`
@@ -411,7 +411,7 @@ function renderLogs(){
           <div class="log-entry-title">${escapeHtml(l.topic)}</div>
           <div class="log-entry-project">${escapeHtml(projectName(l.projectId))}</div>
         </div>
-        <div class="log-entry-date">${new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(new Date(l.createdAt))}</div>
+        <div class="log-entry-date">${new Intl.DateTimeFormat("zh-CN",{month:"short",day:"numeric",year:"numeric"}).format(new Date(l.createdAt))}</div>
       </div>
       <dl>
         ${l.progress?`<div><dt>Progress</dt><dd>${escapeHtml(l.progress)}</dd></div>`:""}
@@ -425,7 +425,7 @@ function renderLogs(){
 function renderReview(){
   const start=startOfWeek();
   const end=new Date(start); end.setDate(end.getDate()+6);
-  const fmt=new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric"});
+  const fmt=new Intl.DateTimeFormat("zh-CN",{month:"numeric",day:"numeric"});
   els.weekLabel.textContent=`${fmt.format(start)} — ${fmt.format(end)}`;
 
   const done=state.tasks.filter(t=>t.done&&t.completedAt&&isThisWeek(t.completedAt));
@@ -439,11 +439,11 @@ function renderReview(){
 
   els.weekDoneList.innerHTML=done.length
     ? done.map(t=>`<div class="done-item"><div class="done-icon">✓</div><div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}</div></div></div>`).join("")
-    : `<div class="empty">Completed tasks from this week will appear here.</div>`;
+    : `<div class="empty">本周完成的任务会显示在这里。</div>`;
 
   els.carryList.innerHTML=open.length
     ? open.slice(0,12).map(t=>`<div class="task-item"><div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}</div></div></div>`).join("")
-    : `<div class="empty">No open tasks to carry forward.</div>`;
+    : `<div class="empty">没有需要延续到下周的任务。</div>`;
 }
 
 function makeReviewText(){
@@ -451,34 +451,34 @@ function makeReviewText(){
   const logs=state.logs.filter(l=>isThisWeek(l.createdAt));
   const open=state.tasks.filter(t=>!t.done);
   const lines=[];
-  lines.push(`WEEKLY REVIEW — ${els.weekLabel.textContent}`);
+  lines.push(`本周总结 — ${els.weekLabel.textContent}`);
   lines.push("");
-  lines.push(`Completed: ${done.length}`);
-  lines.push(`Research logs: ${logs.length}`);
-  lines.push(`Active projects: ${state.projects.filter(p=>p.status==="active").length}`);
+  lines.push(`已完成：${done.length}`);
+  lines.push(`科研 logs: ${logs.length}`);
+  lines.push(`进行中项目：${state.projects.filter(p=>p.status==="active").length}`);
   lines.push("");
-  lines.push("COMPLETED");
+  lines.push("本周完成");
   if(done.length) done.forEach(t=>lines.push(`- ${t.title}${t.projectId?` [${projectName(t.projectId)}]`:""}`));
-  else lines.push("- None recorded");
+  else lines.push("- 暂无记录");
   lines.push("");
-  lines.push("CARRY FORWARD");
+  lines.push("下周继续");
   if(open.length) open.slice(0,15).forEach(t=>lines.push(`- ${t.title}${t.projectId?` [${projectName(t.projectId)}]`:""}`));
-  else lines.push("- None");
+  else lines.push("- 无");
   lines.push("");
-  lines.push("RESEARCH FINDINGS");
+  lines.push("科研发现");
   if(logs.length) logs.slice(0,10).forEach(l=>lines.push(`- ${l.topic}${l.finding?`: ${l.finding}`:""}`));
-  else lines.push("- None recorded");
+  else lines.push("- 暂无记录");
   return lines.join("\n");
 }
 
-function openTaskDialog(){
+function open任务Dialog(){
   renderProjectOptions();
   els.taskDialog.showModal();
   setTimeout(()=>els.taskTitle.focus(),50);
 }
 
 function labelCategory(c){
-  return ({research:"Research",writing:"Writing",admin:"Admin",other:"Other"})[c]||c;
+  return ({research:"科研",writing:"写作",admin:"事务",other:"其他"})[c]||c;
 }
 
 function togglePriority(id){
@@ -492,19 +492,19 @@ function deletePriority(id){
   state.priorities=state.priorities.filter(x=>x.id!==id);
   saveState(); renderToday();
 }
-function toggleTask(id,done){
+function toggle任务(id,done){
   const t=state.tasks.find(x=>x.id===id);
   if(!t)return;
   t.done=done;
   t.completedAt=done?new Date().toISOString():null;
   saveState(); renderAll();
 }
-function deleteTask(id){
+function delete任务(id){
   state.tasks=state.tasks.filter(x=>x.id!==id);
   saveState(); renderAll();
 }
 function deleteProject(id){
-  if(!confirm("Delete this project? Tasks and logs will remain but become unassigned."))return;
+  if(!confirm("确定删除这个项目吗？相关任务和日志会保留，但不再归属该项目。"))return;
   state.projects=state.projects.filter(x=>x.id!==id);
   state.tasks.forEach(t=>{if(t.projectId===id)t.projectId=null});
   state.logs.forEach(l=>{if(l.projectId===id)l.projectId=null});
@@ -519,10 +519,10 @@ function exportData(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
   a.href=url;
-  a.download=`research-desk-${localDateKey()}.json`;
+  a.download=`科研工作台备份-${localDateKey()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  toast("Data exported");
+  toast("数据已导出");
 }
 function importData(e){
   const file=e.target.files?.[0];
@@ -534,9 +534,9 @@ function importData(e){
       Object.assign(state, defaultState(), parsed);
       saveState(); renderAll();
       els.quickNote.value=state.notes[localDateKey()]||"";
-      toast("Data imported");
+      toast("数据已导入");
     }catch{
-      toast("Invalid JSON file");
+      toast("无效的 JSON 文件");
     }
   };
   reader.readAsText(file);
@@ -556,7 +556,7 @@ function escapeHtml(value){
 
 window.togglePriority=togglePriority;
 window.deletePriority=deletePriority;
-window.toggleTask=toggleTask;
-window.deleteTask=deleteTask;
+window.toggle任务=toggle任务;
+window.delete任务=delete任务;
 window.deleteProject=deleteProject;
 window.deleteLog=deleteLog;

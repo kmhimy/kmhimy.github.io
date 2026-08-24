@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f5f6f8" />
   <meta name="description" content="A calm personal research dashboard for daily priorities, tasks, projects, logs and weekly reviews." />
-  <title>Research Desk</title>
+  <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -16,34 +16,34 @@
         <div class="brand">
           <div class="brand-mark">R</div>
           <div>
-            <div class="brand-title">Research Desk</div>
-            <div class="brand-subtitle">Personal academic workspace</div>
+            <div class="brand-title">科研工作台</div>
+            <div class="brand-subtitle">个人科研与任务管理</div>
           </div>
         </div>
 
         <nav class="side-nav">
           <button class="nav-item active" data-view="today">
-            <span>Today</span><span class="nav-key">1</span>
+            <span>今日</span><span class="nav-key">1</span>
           </button>
           <button class="nav-item" data-view="projects">
-            <span>Projects</span><span class="nav-key">2</span>
+            <span>科研项目</span><span class="nav-key">2</span>
           </button>
           <button class="nav-item" data-view="log">
-            <span>Research Log</span><span class="nav-key">3</span>
+            <span>科研日志</span><span class="nav-key">3</span>
           </button>
           <button class="nav-item" data-view="review">
-            <span>Weekly Review</span><span class="nav-key">4</span>
+            <span>本周总结</span><span class="nav-key">4</span>
           </button>
         </nav>
       </div>
 
       <div class="sidebar-footer">
-        <button id="exportBtn" class="quiet-btn">Export data</button>
+        <button id="exportBtn" class="quiet-btn">导出备份</button>
         <label class="quiet-btn file-label">
-          Import data
+          导入备份
           <input id="importInput" type="file" accept=".json,application/json" hidden />
         </label>
-        <div class="storage-note">Data stays in this browser unless exported.</div>
+        <div class="storage-note">当前数据仅保存在本浏览器，请定期导出备份。</div>
       </div>
     </aside>
 
@@ -51,11 +51,11 @@
       <header class="topbar">
         <div>
           <div class="eyebrow" id="todayEyebrow"></div>
-          <h1 id="pageTitle">Today</h1>
+          <h1 id="pageTitle">今日</h1>
         </div>
         <div class="top-actions">
-          <button id="focusModeBtn" class="ghost-btn">Focus mode</button>
-          <button id="addTaskTopBtn" class="primary-btn">+ Add task</button>
+          <button id="focusModeBtn" class="ghost-btn">专注模式</button>
+          <button id="addTaskTopBtn" class="primary-btn">+ 添加任务</button>
         </div>
       </header>
 
@@ -64,8 +64,8 @@
           <article class="panel focus-panel">
             <div class="panel-head">
               <div>
-                <div class="panel-kicker">TODAY'S FOCUS</div>
-                <h2>Three things that matter most</h2>
+                <div class="panel-kicker">今日重点</div>
+                <h2>今天最重要的三件事</h2>
               </div>
               <span class="count-pill" id="priorityCount">0 / 3</span>
             </div>
@@ -73,22 +73,22 @@
             <div id="priorityList" class="priority-list"></div>
 
             <form id="priorityForm" class="inline-form">
-              <input id="priorityInput" maxlength="120" placeholder="Add a focus item…" autocomplete="off" />
-              <button>Add</button>
+              <input id="priorityInput" maxlength="120" placeholder="添加今日重点…" autocomplete="off" />
+              <button>添加</button>
             </form>
           </article>
 
           <article class="panel stat-panel">
-            <div class="panel-kicker">TODAY</div>
+            <div class="panel-kicker">今日</div>
             <div class="big-number" id="doneCount">0</div>
-            <div class="stat-label">tasks completed</div>
+            <div class="stat-label">项任务已完成</div>
             <div class="stat-divider"></div>
             <div class="small-stat">
-              <span>Open</span>
+              <span>待办</span>
               <strong id="openCount">0</strong>
             </div>
             <div class="small-stat">
-              <span>Projects active</span>
+              <span>进行中的项目</span>
               <strong id="projectCount">0</strong>
             </div>
           </article>
@@ -98,25 +98,25 @@
           <article class="panel">
             <div class="panel-head">
               <div>
-                <div class="panel-kicker">TASKS</div>
-                <h2>In progress</h2>
+                <div class="panel-kicker">待办事项</div>
+                <h2>进行中</h2>
               </div>
               <div class="filter-row">
-                <button class="filter active" data-filter="all">All</button>
-                <button class="filter" data-filter="research">Research</button>
-                <button class="filter" data-filter="writing">Writing</button>
-                <button class="filter" data-filter="admin">Admin</button>
+                <button class="filter active" data-filter="all">全部</button>
+                <button class="filter" data-filter="research">科研</button>
+                <button class="filter" data-filter="writing">写作</button>
+                <button class="filter" data-filter="admin">事务</button>
               </div>
             </div>
             <div id="taskList" class="task-list"></div>
-            <button id="addTaskInlineBtn" class="add-row">+ Add a task</button>
+            <button id="addTaskInlineBtn" class="add-row">+ 添加任务</button>
           </article>
 
           <article class="panel">
             <div class="panel-head">
               <div>
-                <div class="panel-kicker">DONE TODAY</div>
-                <h2>Progress made</h2>
+                <div class="panel-kicker">今日完成</div>
+                <h2>今天推进了什么</h2>
               </div>
             </div>
             <div id="doneList" class="done-list"></div>
@@ -126,19 +126,19 @@
         <article class="panel note-panel">
           <div class="panel-head">
             <div>
-              <div class="panel-kicker">QUICK NOTE</div>
-              <h2>Capture before it disappears</h2>
+              <div class="panel-kicker">随手记</div>
+              <h2>先记下来，别让想法溜走</h2>
             </div>
-            <span id="noteSaved" class="saved-indicator">Saved</span>
+            <span id="noteSaved" class="saved-indicator">已保存</span>
           </div>
-          <textarea id="quickNote" placeholder="A derivation idea, a question, a reminder, a result worth keeping…"></textarea>
+          <textarea id="quickNote" placeholder="推导想法、问题、提醒、值得保留的结果……"></textarea>
         </article>
       </section>
 
       <section id="view-projects" class="view">
         <div class="section-intro">
-          <p>Keep each research thread visible without turning the dashboard into project-management software.</p>
-          <button id="addProjectBtn" class="primary-btn">+ New project</button>
+          <p>让每条科研主线都清晰可见，但不要把工作台变成复杂的项目管理软件。</p>
+          <button id="addProjectBtn" class="primary-btn">+ 新建项目</button>
         </div>
         <div id="projectGrid" class="project-grid"></div>
       </section>
@@ -146,38 +146,38 @@
       <section id="view-log" class="view">
         <div class="grid log-grid">
           <article class="panel">
-            <div class="panel-kicker">NEW ENTRY</div>
-            <h2>Research log</h2>
+            <div class="panel-kicker">新记录</div>
+            <h2>科研日志</h2>
             <form id="logForm" class="stack-form">
               <label>
-                Project
+                科研项目
                 <select id="logProject"></select>
               </label>
               <label>
-                Question / topic
-                <input id="logTopic" maxlength="160" placeholder="What are you working on?" />
+                问题 / 主题
+                <input id="logTopic" maxlength="160" placeholder="你正在研究什么？" />
               </label>
               <label>
-                Progress
-                <textarea id="logProgress" placeholder="What did you do or verify?"></textarea>
+                进展
+                <textarea id="logProgress" placeholder="今天做了什么？验证了什么？"></textarea>
               </label>
               <label>
-                Finding
-                <textarea id="logFinding" placeholder="What did you learn, notice, or rule out?"></textarea>
+                关键发现
+                <textarea id="logFinding" placeholder="发现了什么？排除了什么？"></textarea>
               </label>
               <label>
-                Next step
-                <textarea id="logNext" placeholder="What should happen next?"></textarea>
+                下一步
+                <textarea id="logNext" placeholder="接下来要做什么？"></textarea>
               </label>
-              <button class="primary-btn" type="submit">Save entry</button>
+              <button class="primary-btn" type="submit">保存日志</button>
             </form>
           </article>
 
           <article class="panel">
             <div class="panel-head">
               <div>
-                <div class="panel-kicker">ARCHIVE</div>
-                <h2>Recent entries</h2>
+                <div class="panel-kicker">记录</div>
+                <h2>最近科研记录</h2>
               </div>
             </div>
             <div id="logList" class="log-list"></div>
@@ -188,38 +188,38 @@
       <section id="view-review" class="view">
         <div class="review-hero">
           <div>
-            <div class="panel-kicker">WEEKLY REVIEW</div>
-            <h2 id="weekLabel">This week</h2>
-            <p>A lightweight summary generated from what you actually recorded.</p>
+            <div class="panel-kicker">本周总结</div>
+            <h2 id="weekLabel">本周</h2>
+            <p>根据你实际记录的内容自动生成一份轻量周总结。</p>
           </div>
-          <button id="copyReviewBtn" class="ghost-btn">Copy summary</button>
+          <button id="copyReviewBtn" class="ghost-btn">复制总结</button>
         </div>
 
         <div class="review-stats">
           <article class="metric-card">
-            <span>Completed</span>
+            <span>已完成</span>
             <strong id="weekDone">0</strong>
           </article>
           <article class="metric-card">
-            <span>Log entries</span>
+            <span>科研日志</span>
             <strong id="weekLogs">0</strong>
           </article>
           <article class="metric-card">
-            <span>Active projects</span>
+            <span>进行中项目</span>
             <strong id="weekProjects">0</strong>
           </article>
         </div>
 
         <div class="grid two-thirds">
           <article class="panel">
-            <div class="panel-kicker">COMPLETED</div>
-            <h2>What moved forward</h2>
+            <div class="panel-kicker">本周完成</div>
+            <h2>这一周推进了什么</h2>
             <div id="weekDoneList" class="done-list"></div>
           </article>
 
           <article class="panel">
-            <div class="panel-kicker">NEXT</div>
-            <h2>Carry forward</h2>
+            <div class="panel-kicker">下周继续</div>
+            <h2>未完成事项</h2>
             <div id="carryList" class="task-list compact"></div>
           </article>
         </div>
@@ -231,42 +231,42 @@
     <form method="dialog" id="taskForm" class="dialog-card">
       <div class="dialog-head">
         <div>
-          <div class="panel-kicker">NEW TASK</div>
-          <h2>Add to your desk</h2>
+          <div class="panel-kicker">新任务</div>
+          <h2>添加到科研工作台</h2>
         </div>
         <button value="cancel" class="icon-btn" aria-label="Close">×</button>
       </div>
 
       <label>
-        Task
-        <input id="taskTitle" required maxlength="160" placeholder="What needs to happen?" />
+        任务
+        <input id="taskTitle" required maxlength="160" placeholder="需要完成什么？" />
       </label>
 
       <div class="form-two">
         <label>
-          Category
+          分类
           <select id="taskCategory">
-            <option value="research">Research</option>
-            <option value="writing">Writing</option>
-            <option value="admin">Admin</option>
-            <option value="other">Other</option>
+            <option value="research">科研</option>
+            <option value="writing">写作</option>
+            <option value="admin">事务</option>
+            <option value="other">其他</option>
           </select>
         </label>
 
         <label>
-          Project
+          科研项目
           <select id="taskProject"></select>
         </label>
       </div>
 
       <label>
-        Due date
+        截止日期
         <input id="taskDue" type="date" />
       </label>
 
       <div class="dialog-actions">
-        <button value="cancel" class="ghost-btn">Cancel</button>
-        <button id="saveTaskBtn" value="default" class="primary-btn">Add task</button>
+        <button value="cancel" class="ghost-btn">取消</button>
+        <button id="saveTaskBtn" value="default" class="primary-btn">添加任务</button>
       </div>
     </form>
   </dialog>
@@ -275,34 +275,34 @@
     <form method="dialog" id="projectForm" class="dialog-card">
       <div class="dialog-head">
         <div>
-          <div class="panel-kicker">NEW PROJECT</div>
-          <h2>Create project</h2>
+          <div class="panel-kicker">新项目</div>
+          <h2>创建科研项目</h2>
         </div>
         <button value="cancel" class="icon-btn" aria-label="Close">×</button>
       </div>
 
       <label>
-        Project name
-        <input id="projectName" required maxlength="120" placeholder="e.g. PRL manuscript" />
+        项目名称
+        <input id="projectName" required maxlength="120" placeholder="例如：Dark-space PRL" />
       </label>
 
       <label>
-        Short description
-        <textarea id="projectDesc" maxlength="320" placeholder="What is this project trying to achieve?"></textarea>
+        简要说明
+        <textarea id="projectDesc" maxlength="320" placeholder="这个项目目前要解决什么问题？"></textarea>
       </label>
 
       <label>
-        Status
-        <select id="projectStatus">
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="idea">Idea</option>
+        状态
+        <select id="project状态">
+          <option value="active">进行中</option>
+          <option value="paused">暂停</option>
+          <option value="idea">想法</option>
         </select>
       </label>
 
       <div class="dialog-actions">
-        <button value="cancel" class="ghost-btn">Cancel</button>
-        <button id="saveProjectBtn" value="default" class="primary-btn">Create project</button>
+        <button value="cancel" class="ghost-btn">取消</button>
+        <button id="saveProjectBtn" value="default" class="primary-btn">创建项目</button>
       </div>
     </form>
   </dialog>
