@@ -2174,3 +2174,71 @@ body.today-focus-mode #todayFocusBtn{zoom:calc(1 / var(--font-scale))}
 .font-scale-presets button{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px;color:var(--muted);font-size:9px;font-weight:700;cursor:pointer}
 .font-scale-presets button.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,white);color:var(--accent)}
 @media(max-width:680px){.font-scale-row{grid-template-columns:auto 1fr auto}.font-scale-row output{grid-column:1/-1;width:70px}}
+
+/* ==========================================================================
+   V12.4 — Baseline typography hierarchy
+   100% is now the carefully tuned default; user scale remains 85–125%.
+   ========================================================================== */
+
+/* Core reading hierarchy */
+body{font-size:15px;line-height:1.58}
+.sidebar-brand-title{font-size:17px}
+.sidebar-brand-subtitle{font-size:12px}
+.nav-item{font-size:15px}
+
+/* Generic page hierarchy */
+.page-header h1{font-size:42px;line-height:1.08;letter-spacing:-.025em}
+.page-header p{font-size:14px}
+.panel-kicker{font-size:12px;letter-spacing:.16em}
+.panel h2{line-height:1.18}
+.setting-help,.empty{font-size:14px;line-height:1.65}
+button,input,select,textarea{font-size:14px}
+
+/* Today: one clear page title, then section titles */
+#view-today > .page-header,
+#view-today > header.page-header{display:none!important}
+.today-command-header{align-items:center;margin-bottom:24px}
+.today-command-header h2{font-size:42px;line-height:1.05;letter-spacing:-.025em}
+.today-command-header p{font-size:14px;line-height:1.55;max-width:760px}
+.today-command-top h2{font-size:27px}
+.today-command-top p{font-size:14px;line-height:1.55}
+.today-top3-title{font-size:16px}
+.today-top3-project{font-size:12px}
+.today-top3-add select{font-size:14px}
+.today-continuity-item button{font-size:15px}
+.today-continuity-meta{font-size:12px}
+.today-continuity-note{font-size:14px}
+.today-task-main button{font-size:15px}
+.today-task-meta{font-size:12px}
+.today-task-due{font-size:12px}
+.today-filter-tabs button{font-size:12px}
+.today-progress-card>span{font-size:13px}
+.today-progress-row{font-size:13px}
+.today-done-item button{font-size:14px}
+.today-done-time{font-size:11px}
+.today-capture-panel p{font-size:14px}
+.today-capture-editor textarea{font-size:14px}
+.count-pill{font-size:12px}
+
+/* Buttons: readable but not dominant */
+.primary-btn,.ghost-btn,.danger-btn{font-size:14px;min-height:42px;padding:10px 16px}
+
+/* Project / task / dashboard readability */
+.project-card p,.task-card p,.dashboard-card p{font-size:14px;line-height:1.6}
+.project-card h3,.task-card h3{font-size:20px}
+.meta,.muted{font-size:12px}
+
+/* Appearance controls */
+.font-scale-row>span{font-size:13px}
+.font-scale-row output{font-size:13px}
+.font-scale-presets button{font-size:13px}
+
+/* Preserve compact density as spacing choice, not unreadably tiny text */
+body[data-density="compact"] .panel{padding-top:18px;padding-bottom:18px}
+body[data-density="compact"] .nav-item{padding-top:9px;padding-bottom:9px}
+
+/* Small screens retain hierarchy without giant titles */
+@media(max-width:680px){
+  .page-header h1,.today-command-header h2{font-size:34px}
+  .today-command-top h2{font-size:24px}
+}
