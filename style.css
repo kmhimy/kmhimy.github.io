@@ -2155,3 +2155,22 @@ body.today-focus-mode #todayAddTaskBtn{display:none}
 body.today-focus-mode #todayFocusBtn{position:fixed;right:24px;top:20px;z-index:500;background:#17232b;color:#fff}
 @media(max-width:950px){.today-continuity-grid,.today-work-grid,.today-capture-panel{grid-template-columns:1fr}}
 @media(max-width:680px){.today-command-header{align-items:flex-start;flex-direction:column}.today-top3-item{grid-template-columns:22px minmax(0,1fr) auto}.today-top3-project{grid-column:2}.today-top3-add{flex-direction:column}}
+
+/* ==========================================================================
+   V12.3 — User adjustable typography scale
+   ========================================================================== */
+:root{--font-scale:1}
+.app-shell,.auth-shell{zoom:var(--font-scale)}
+/* Keep viewport-fixed overlays visually aligned under UI zoom. */
+body.today-focus-mode #todayFocusBtn{zoom:calc(1 / var(--font-scale))}
+/* Research-note editing/math should not be globally magnified; its own editor sizing remains stable. */
+.note-editor-shell,.katex,.katex-display{zoom:calc(1 / var(--font-scale))}
+.font-scale-setting{margin-top:14px}
+.font-scale-row{display:grid;grid-template-columns:auto minmax(180px,1fr) auto 58px;gap:12px;align-items:center}
+.font-scale-row>span{color:var(--muted);font-size:10px;font-weight:700}
+.font-scale-row input[type="range"]{width:100%;accent-color:var(--accent)}
+.font-scale-row output{display:grid;place-items:center;min-height:34px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);font-size:10px;font-weight:800}
+.font-scale-presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.font-scale-presets button{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px;color:var(--muted);font-size:9px;font-weight:700;cursor:pointer}
+.font-scale-presets button.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,white);color:var(--accent)}
+@media(max-width:680px){.font-scale-row{grid-template-columns:auto 1fr auto}.font-scale-row output{grid-column:1/-1;width:70px}}

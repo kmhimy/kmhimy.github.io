@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=12.2.0" />
+  <link rel="stylesheet" href="style.css?v=12.3.0" />
 </head>
 <body>
 
@@ -764,6 +764,26 @@
         </article>
 
         <article class="panel appearance-section">
+          <div class="panel-kicker">FONT SIZE</div>
+          <h2>全局字体大小</h2>
+          <div class="font-scale-setting">
+            <div class="font-scale-row">
+              <span class="font-scale-min">小</span>
+              <input id="fontScaleRange" type="range" min="85" max="125" step="5" value="100" aria-label="全局字体大小">
+              <span class="font-scale-max">大</span>
+              <output id="fontScaleValue">100%</output>
+            </div>
+            <div class="font-scale-presets">
+              <button type="button" data-font-scale="90">紧凑 90%</button>
+              <button type="button" data-font-scale="100">标准 100%</button>
+              <button type="button" data-font-scale="110">舒适 110%</button>
+              <button type="button" data-font-scale="120">大字 120%</button>
+            </div>
+          </div>
+          <p class="setting-help">统一缩放正文、导航、按钮和标题。公式编辑器与数学公式保持独立比例，避免 LaTeX 排版被破坏。</p>
+        </article>
+
+        <article class="panel appearance-section">
           <div class="panel-kicker">DENSITY</div>
           <h2>页面密度</h2>
           <div id="densityOptions" class="segmented-setting">
@@ -1043,12 +1063,12 @@
   </button>
 
   <div id="toast" class="toast"></div>
-<script src="config.js?v=12.2.0"></script>
+<script src="config.js?v=12.3.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=12.2.0"></script>
+  <script src="app.js?v=12.3.0"></script>
 <div id="priorityCount"></div><div id="priorityStat"></div>
   <button id="addTaskInlineBtn" type="button"></button>
   <div id="taskList"></div><div id="doneList"></div>

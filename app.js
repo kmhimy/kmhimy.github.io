@@ -100,6 +100,10 @@ const els = {
   themeOptionBtns: [...document.querySelectorAll("[data-theme-option]")],
   fontOptionBtns: [...document.querySelectorAll("[data-font-option]")],
   densityOptionBtns: [...document.querySelectorAll("[data-density-option]")],
+  fontScaleRange: document.getElementById("fontScaleRange"),
+  fontScaleValue: document.getElementById("fontScaleValue"),
+  fontScalePresetBtns: [...document.querySelectorAll("[data-font-scale]")],
+
 
   timelineProjectFilter: document.getElementById("timelineProjectFilter"),
   timelineTypeFilter: document.getElementById("timelineTypeFilter"),
@@ -292,7 +296,7 @@ function migrateToV2(s){
   if(!Array.isArray(s.trash)) s.trash = [];
   if(!s.settings || typeof s.settings !== "object") s.settings = {focusMode:false};
   if(!s.settings.appearance || typeof s.settings.appearance !== "object"){
-    s.settings.appearance={theme:"academic",font:"mixed",density:"comfortable"};
+    s.settings.appearance={theme:"academic",font:"mixed",density:"comfortable",fontScale:100};
   }
   if(!["academic","paper","forest","graphite"].includes(s.settings.appearance.theme)){
     s.settings.appearance.theme="academic";
@@ -303,6 +307,8 @@ function migrateToV2(s){
   if(!["comfortable","compact"].includes(s.settings.appearance.density)){
     s.settings.appearance.density="comfortable";
   }
+  const fs=Number(s.settings.appearance.fontScale);
+  s.settings.appearance.fontScale=Number.isFinite(fs)?Math.min(125,Math.max(85,Math.round(fs/5)*5)):100;
   if(!s.meta || typeof s.meta !== "object") s.meta = {localUpdatedAt:null};
   if(!("localUpdatedAt" in s.meta)) s.meta.localUpdatedAt = null;
 
@@ -490,6 +496,11 @@ function bindEvents(){
   els.densityOptionBtns.forEach(btn=>{
     btn.addEventListener("click",()=>setAppearanceOption("density",btn.dataset.densityOption));
   });
+  if(els.fontScaleRange){
+    els.fontScaleRange.addEventListener("input",()=>setFontScale(els.fontScaleRange.value,false));
+    els.fontScaleRange.addEventListener("change",()=>setFontScale(els.fontScaleRange.value,true));
+  }
+  els.fontScalePresetBtns?.forEach(btn=>btn.addEventListener("click",()=>setFontScale(btn.dataset.fontScale,true)));
   els.appearanceResetBtn.addEventListener("click",resetAppearanceSettings);
 
   els.noteSplitHandle.addEventListener("keydown",e=>{
@@ -1472,7 +1483,7 @@ function openTaskDialogWithDue(dateKey){
 // ============================================================================
 
 function appearanceDefaults(){
-  return {theme:"academic",font:"mixed",density:"comfortable"};
+  return {theme:"academic",font:"mixed",density:"comfortable",fontScale:100};
 }
 
 function getAppearance(){
@@ -1488,6 +1499,8 @@ function applyAppearanceSettings(){
   document.body.dataset.theme=a.theme||"academic";
   document.body.dataset.font=a.font||"mixed";
   document.body.dataset.density=a.density||"comfortable";
+  const fontScale=Number(a.fontScale)||100;
+  document.documentElement.style.setProperty("--font-scale",String(fontScale/100));
 
   renderAppearanceControls();
 }
@@ -1499,6 +1512,10 @@ function renderAppearanceControls(){
   els.themeOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.themeOption===a.theme));
   els.fontOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.fontOption===a.font));
   els.densityOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.densityOption===a.density));
+  const fontScale=Number(a.fontScale)||100;
+  if(els.fontScaleRange) els.fontScaleRange.value=String(fontScale);
+  if(els.fontScaleValue) els.fontScaleValue.textContent=`${fontScale}%`;
+  els.fontScalePresetBtns?.forEach(btn=>btn.classList.toggle("active",Number(btn.dataset.fontScale)===fontScale));
 }
 
 function setAppearanceOption(kind,value){
@@ -1515,6 +1532,18 @@ function setAppearanceOption(kind,value){
   applyAppearanceSettings();
   saveState();
   toast("外观设置已保存");
+}
+
+function setFontScale(value,save=true){
+  const a=getAppearance();
+  const n=Math.min(125,Math.max(85,Math.round(Number(value)/5)*5));
+  if(!Number.isFinite(n)) return;
+  a.fontScale=n;
+  applyAppearanceSettings();
+  if(save){
+    saveState();
+    toast(`字体大小已设为 ${n}%`);
+  }
 }
 
 function resetAppearanceSettings(){
