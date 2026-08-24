@@ -2823,3 +2823,34 @@ button{touch-action:manipulation}
   .panel{max-width:100%;box-sizing:border-box}
   dialog{max-width:calc(100vw - 24px)!important}
 }
+
+/* ==========================================================================
+   V14.1 — Task title editing
+   ========================================================================== */
+.task-detail-title-row{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.task-detail-title-row h2{
+  min-width:0;
+  flex:1;
+}
+.task-rename-btn{
+  flex:0 0 auto;
+  margin-top:3px;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font-size:11px;
+  cursor:pointer;
+  padding:5px 7px;
+  border-radius:6px;
+}
+.task-rename-btn:hover{
+  background:#eef1f2;
+  color:var(--text);
+}
+.task-rename-dialog{width:min(520px,calc(100vw - 32px))}
+.task-rename-dialog .field{margin-top:18px}
+.task-rename-dialog input{font-size:15px}

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 14;
+const APP_VERSION = 14.1;
 
 const state = loadState();
 let activeFilter = "all";
@@ -176,6 +176,12 @@ const els = {
   adminTaskList: document.getElementById("adminTaskList"),
   adminFilterBtns: [...document.querySelectorAll("[data-admin-filter]")],
 
+  renameTaskBtn: document.getElementById("renameTaskBtn"),
+  renameTaskDialog: document.getElementById("renameTaskDialog"),
+  renameTaskForm: document.getElementById("renameTaskForm"),
+  renameTaskInput: document.getElementById("renameTaskInput"),
+  renameTaskCloseBtn: document.getElementById("renameTaskCloseBtn"),
+  renameTaskCancelBtn: document.getElementById("renameTaskCancelBtn"),
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
   archiveWrap: document.getElementById("archiveWrap"),
@@ -493,6 +499,36 @@ function exportFullBackup(){
   toast("完整备份已导出");
 }
 
+
+function openRenameTaskDialog(){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+  els.renameTaskInput.value=task.title||"";
+  els.renameTaskDialog.showModal();
+  setTimeout(()=>{els.renameTaskInput.focus();els.renameTaskInput.select();},0);
+}
+
+function closeRenameTaskDialog(){
+  if(els.renameTaskDialog.open) els.renameTaskDialog.close();
+}
+
+function saveRenamedTask(event){
+  event.preventDefault();
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+  const title=els.renameTaskInput.value.trim();
+  if(!title){
+    toast("任务名称不能为空");
+    return;
+  }
+  task.title=title;
+  saveState();
+  closeRenameTaskDialog();
+  renderAll();
+  openTaskDetail(task.id,"rename");
+  toast("任务名称已更新");
+}
+
 function bindEvents(){
   els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
 
@@ -695,6 +731,10 @@ function bindEvents(){
   });
   els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
+  els.renameTaskBtn.addEventListener("click",openRenameTaskDialog);
+  els.renameTaskCloseBtn.addEventListener("click",closeRenameTaskDialog);
+  els.renameTaskCancelBtn.addEventListener("click",closeRenameTaskDialog);
+  els.renameTaskForm.addEventListener("submit",saveRenamedTask);
   if(els.v14BackupBtn) els.v14BackupBtn.addEventListener("click",exportFullBackup);
   els.adminAddTaskBtn.addEventListener("click",openAdminTaskDialog);
   els.adminFilterBtns.forEach(btn=>btn.addEventListener("click",()=>{
