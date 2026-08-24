@@ -1,12 +1,15 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 5;
+const APP_VERSION = 6;
 
 const state = loadState();
 let activeFilter = "all";
 let noteTimer = null;
 let currentProjectId = null;
+let currentTaskId = null;
+let taskDetailReturnView = "today";
 let archiveExpanded = false;
 let projectSummaryTimer = null;
+let taskDetailsTimer = null;
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -53,6 +56,22 @@ const els = {
   taskPriorityToday: document.getElementById("taskPriorityToday"),
   closeTaskDialogBtn: document.getElementById("closeTaskDialogBtn"),
   cancelTaskBtn: document.getElementById("cancelTaskBtn"),
+
+  backFromTaskBtn: document.getElementById("backFromTaskBtn"),
+  taskExportMarkdownBtn: document.getElementById("taskExportMarkdownBtn"),
+  taskCompleteBtn: document.getElementById("taskCompleteBtn"),
+  taskRestoreBtn: document.getElementById("taskRestoreBtn"),
+  taskDetailMeta: document.getElementById("taskDetailMeta"),
+  taskDetailTitle: document.getElementById("taskDetailTitle"),
+  taskWorkLogCount: document.getElementById("taskWorkLogCount"),
+  taskDetailsInput: document.getElementById("taskDetailsInput"),
+  taskDetailsPreview: document.getElementById("taskDetailsPreview"),
+  taskDetailsSaved: document.getElementById("taskDetailsSaved"),
+  taskWorkLogInput: document.getElementById("taskWorkLogInput"),
+  taskWorkLogPreview: document.getElementById("taskWorkLogPreview"),
+  saveTaskWorkLogBtn: document.getElementById("saveTaskWorkLogBtn"),
+  taskWorkLogList: document.getElementById("taskWorkLogList"),
+  markdownToolbars: [...document.querySelectorAll(".markdown-toolbar")],
 
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
@@ -181,6 +200,8 @@ function migrateToV2(s){
     if(!("createdAt" in t)) t.createdAt = new Date().toISOString();
     if(!("done" in t)) t.done = false;
     if(!("completedAt" in t)) t.completedAt = null;
+    if(!("detailsMarkdown" in t)) t.detailsMarkdown = "";
+    if(!Array.isArray(t.workLogs)) t.workLogs = [];
   });
 
   // V1 的“今日重点”是独立数据；V2 将其迁移为真正的任务。
@@ -204,7 +225,9 @@ function migrateToV2(s){
         createdAt: p.createdAt || new Date().toISOString(),
         done: Boolean(p.done),
         completedAt: p.completedAt || null,
-        priorityDate: p.date || null
+        priorityDate: p.date || null,
+        detailsMarkdown:"",
+        workLogs:[]
       });
     }
   }
@@ -338,7 +361,9 @@ function bindEvents(){
       createdAt:new Date().toISOString(),
       done:false,
       completedAt:null,
-      priorityDate:localDateKey()
+      priorityDate:localDateKey(),
+      detailsMarkdown:"",
+      workLogs:[]
     });
 
     els.priorityInput.value="";
@@ -376,7 +401,9 @@ function bindEvents(){
       createdAt:new Date().toISOString(),
       done:false,
       completedAt:null,
-      priorityDate:makePriority ? localDateKey() : null
+      priorityDate:makePriority ? localDateKey() : null,
+      detailsMarkdown:"",
+      workLogs:[]
     });
 
     saveState();
@@ -399,6 +426,50 @@ function bindEvents(){
       els.noteSaved.classList.add("show");
       setTimeout(()=>els.noteSaved.classList.remove("show"),900);
     },350);
+  });
+
+  els.backFromTaskBtn.addEventListener("click", ()=>{
+    currentTaskId=null;
+    switchView(taskDetailReturnView || "today");
+  });
+
+  els.taskCompleteBtn.addEventListener("click", ()=>{
+    if(currentTaskId) toggleTask(currentTaskId,true);
+  });
+
+  els.taskRestoreBtn.addEventListener("click", ()=>{
+    if(currentTaskId) toggleTask(currentTaskId,false);
+  });
+
+  els.taskExportMarkdownBtn.addEventListener("click", ()=>{
+    if(currentTaskId) exportTaskMarkdown(currentTaskId);
+  });
+
+  els.taskDetailsInput.addEventListener("input", ()=>{
+    renderMarkdownInto(els.taskDetailsInput.value,els.taskDetailsPreview);
+    clearTimeout(taskDetailsTimer);
+    taskDetailsTimer=setTimeout(()=>{
+      const task=state.tasks.find(t=>t.id===currentTaskId);
+      if(!task) return;
+      task.detailsMarkdown=els.taskDetailsInput.value;
+      saveState();
+      els.taskDetailsSaved.classList.add("show");
+      setTimeout(()=>els.taskDetailsSaved.classList.remove("show"),900);
+    },350);
+  });
+
+  els.taskWorkLogInput.addEventListener("input", ()=>{
+    renderMarkdownInto(els.taskWorkLogInput.value,els.taskWorkLogPreview);
+  });
+
+  els.saveTaskWorkLogBtn.addEventListener("click",saveCurrentTaskWorkLog);
+
+  els.markdownToolbars.forEach(toolbar=>{
+    toolbar.addEventListener("click",e=>{
+      const button=e.target.closest("button[data-md]");
+      if(!button) return;
+      insertMarkdownSyntax(toolbar.dataset.target,button.dataset.md);
+    });
   });
 
   els.addProjectBtn.addEventListener("click", openProjectDialog);
@@ -958,6 +1029,7 @@ function switchView(name){
     today:"今日",
     projects:"科研项目",
     "project-detail":"项目详情",
+    "task-detail":"任务详情",
     log:"科研日志",
     review:"本周总结"
   };
@@ -985,6 +1057,7 @@ function renderAll(){
   renderLogs();
   renderReview();
   if(currentProjectId) renderProjectDetail();
+  if(currentTaskId) renderTaskDetail();
 }
 
 function renderToday(){
@@ -1018,7 +1091,7 @@ function renderPriorities(){
       <input class="check" type="checkbox" ${t.done?"checked":""}
         onchange="toggleTask('${t.id}', ${!t.done})">
       <div class="item-text">
-        <div class="item-title ${t.done?"done":""}">${escapeHtml(t.title)}</div>
+        <div class="item-title ${t.done?"done":""}"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
         <div class="item-meta">
           ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
           ${t.due?dueBadge(t.due):""}
@@ -1056,7 +1129,7 @@ function renderTasks(){
     <div class="task-item">
       <input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">
       <div class="item-text">
-        <div class="item-title">${escapeHtml(t.title)}</div>
+        <div class="item-title"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
         <div class="item-meta">
           <span class="badge ${t.category}">${labelCategory(t.category)}</span>
           ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
@@ -1084,7 +1157,7 @@ function renderDone(){
     <div class="done-item">
       <div class="done-icon">✓</div>
       <div class="item-text">
-        <div class="item-title">${escapeHtml(t.title)}</div>
+        <div class="item-title"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
         <div class="item-meta">
           ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
           ${t.priorityDate===localDateKey()?`<span class="badge today">今日重点</span>`:""}
@@ -1301,6 +1374,229 @@ function dueBadge(due){
   return `<span>截止 ${shortDate(due)}</span>`;
 }
 
+
+// ===== V6 task detail / Markdown / LaTeX =====
+function openTaskDetail(id,returnView="today"){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task) return;
+  currentTaskId=id;
+  taskDetailReturnView=returnView || "today";
+  switchView("task-detail");
+  renderTaskDetail();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderTaskDetail(){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task){
+    currentTaskId=null;
+    switchView(taskDetailReturnView || "today");
+    return;
+  }
+
+  els.taskDetailTitle.textContent=task.title;
+  els.taskWorkLogCount.textContent=(task.workLogs||[]).length;
+
+  const meta=[];
+  meta.push(`<span class="badge ${task.category}">${labelCategory(task.category)}</span>`);
+  if(task.projectId) meta.push(`<span>${escapeHtml(projectName(task.projectId))}</span>`);
+  if(task.due) meta.push(dueBadge(task.due));
+  if(task.priorityDate===localDateKey()) meta.push(`<span class="badge today">今日重点</span>`);
+  meta.push(`<span class="status-badge ${task.done?"archived":"active"}">${task.done?"已完成":"进行中"}</span>`);
+  els.taskDetailMeta.innerHTML=meta.join("");
+
+  els.taskCompleteBtn.hidden=task.done;
+  els.taskRestoreBtn.hidden=!task.done;
+
+  els.taskDetailsInput.value=task.detailsMarkdown||"";
+  renderMarkdownInto(task.detailsMarkdown||"",els.taskDetailsPreview);
+
+  els.taskWorkLogInput.value="";
+  renderMarkdownInto("",els.taskWorkLogPreview);
+  renderTaskWorkLogs(task);
+}
+
+function renderTaskWorkLogs(task){
+  const logs=[...(task.workLogs||[])].sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+  if(!logs.length){
+    els.taskWorkLogList.innerHTML=`<div class="panel empty">还没有工作记录。每完成一次推导、计算、文献检查或文字修改，都可以在这里留下一条。</div>`;
+    return;
+  }
+
+  els.taskWorkLogList.innerHTML=logs.map((log,index)=>`
+    <article class="task-worklog-card">
+      <div class="task-worklog-head">
+        <div class="task-worklog-date">${formatDateTime(log.createdAt)}</div>
+        <div class="task-worklog-index">记录 ${logs.length-index}</div>
+      </div>
+      <div class="markdown-preview" id="worklog-preview-${escapeAttr(log.id)}"></div>
+      <button class="worklog-delete-btn" type="button" onclick="deleteTaskWorkLog('${task.id}','${log.id}')">删除记录</button>
+    </article>
+  `).join("");
+
+  logs.forEach(log=>{
+    const target=document.getElementById(`worklog-preview-${escapeAttr(log.id)}`);
+    if(target) renderMarkdownInto(log.content||"",target);
+  });
+}
+
+function saveCurrentTaskWorkLog(){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+  const content=els.taskWorkLogInput.value.trim();
+  if(!content){
+    toast("先写下本次具体做了什么。");
+    els.taskWorkLogInput.focus();
+    return;
+  }
+
+  if(!Array.isArray(task.workLogs)) task.workLogs=[];
+  task.workLogs.push({
+    id:uid("worklog"),
+    createdAt:new Date().toISOString(),
+    content
+  });
+
+  els.taskWorkLogInput.value="";
+  renderMarkdownInto("",els.taskWorkLogPreview);
+  saveState();
+  renderTaskDetail();
+  toast("本次工作记录已保存");
+}
+
+function deleteTaskWorkLog(taskId,logId){
+  const task=state.tasks.find(t=>t.id===taskId);
+  if(!task||!Array.isArray(task.workLogs)) return;
+  if(!confirm("确定删除这条工作记录吗？")) return;
+  task.workLogs=task.workLogs.filter(log=>log.id!==logId);
+  saveState();
+  renderTaskDetail();
+}
+
+function renderMarkdownInto(source,target){
+  if(!target) return;
+  const text=String(source||"");
+  if(!text.trim()){
+    target.innerHTML=`<div class="empty">预览会显示在这里。</div>`;
+    return;
+  }
+
+  try{
+    if(!window.marked||!window.DOMPurify){
+      target.textContent=text;
+      return;
+    }
+    marked.setOptions({gfm:true,breaks:true});
+    const raw=marked.parse(text);
+    target.innerHTML=DOMPurify.sanitize(raw);
+
+    const renderMath=()=>{
+      if(window.renderMathInElement&&target.isConnected){
+        renderMathInElement(target,{
+          delimiters:[
+            {left:"$$",right:"$$",display:true},
+            {left:"\\[",right:"\\]",display:true},
+            {left:"\\(",right:"\\)",display:false},
+            {left:"$",right:"$",display:false}
+          ],
+          throwOnError:false
+        });
+      }
+    };
+    if(window.renderMathInElement) renderMath();
+    else setTimeout(renderMath,250);
+  }catch(err){
+    console.error("Markdown render error",err);
+    target.textContent=text;
+  }
+}
+
+function insertMarkdownSyntax(targetId,type){
+  const textarea=document.getElementById(targetId);
+  if(!textarea) return;
+
+  const start=textarea.selectionStart??textarea.value.length;
+  const end=textarea.selectionEnd??start;
+  const selected=textarea.value.slice(start,end);
+
+  let before="",after="",fallback="";
+  switch(type){
+    case "bold":before="**";after="**";fallback="加粗文字";break;
+    case "h2":before="\n## ";after="\n";fallback="小标题";break;
+    case "list":before="\n- ";after="\n";fallback="条目";break;
+    case "inline-math":before="$";after="$";fallback="E=mc^2";break;
+    case "display-math":
+      before="\n$$\n";after="\n$$\n";
+      fallback="H_{\\mathrm{eff}} = \\sum_j \\omega_j a_j^\\dagger a_j";
+      break;
+    case "code":before="\n```\n";after="\n```\n";fallback="code";break;
+    default:return;
+  }
+
+  textarea.setRangeText(before+(selected||fallback)+after,start,end,"end");
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input",{bubbles:true}));
+}
+
+function exportTaskMarkdown(id){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task) return;
+
+  const lines=[];
+  lines.push(`# ${task.title}`);
+  lines.push("");
+  lines.push(`- 项目：${task.projectId?projectName(task.projectId):"未归属项目"}`);
+  lines.push(`- 分类：${labelCategory(task.category)}`);
+  lines.push(`- 状态：${task.done?"已完成":"进行中"}`);
+  if(task.due) lines.push(`- 截止日期：${task.due}`);
+  if(task.createdAt) lines.push(`- 创建时间：${formatDateTime(task.createdAt)}`);
+  if(task.completedAt) lines.push(`- 完成时间：${formatDateTime(task.completedAt)}`);
+
+  lines.push("");
+  lines.push("## 任务说明与推导");
+  lines.push("");
+  lines.push(task.detailsMarkdown?.trim()||"_暂无记录_");
+  lines.push("");
+  lines.push("## 工作记录");
+
+  const logs=[...(task.workLogs||[])].sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+  if(!logs.length){
+    lines.push("");
+    lines.push("_暂无工作记录_");
+  }else{
+    logs.forEach((log,index)=>{
+      lines.push("");
+      lines.push(`### ${index+1}. ${formatDateTime(log.createdAt)}`);
+      lines.push("");
+      lines.push(log.content||"");
+    });
+  }
+
+  const blob=new Blob([lines.join("\n")],{type:"text/markdown;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`${safeFileName(task.title)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("Markdown 已导出");
+}
+
+function formatDateTime(iso){
+  if(!iso) return "未知时间";
+  return new Intl.DateTimeFormat("zh-CN",{
+    year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"
+  }).format(new Date(iso));
+}
+
+function safeFileName(name){
+  return String(name||"task").replace(/[\\/:*?"<>|]/g,"-").slice(0,80);
+}
+
+function escapeAttr(value){
+  return String(value??"").replace(/[^a-zA-Z0-9_-]/g,"_");
+}
+
 function togglePriority(id){
   const t=state.tasks.find(x=>x.id===id);
   if(!t) return;
@@ -1345,6 +1641,10 @@ function toggleTask(id, done){
 
 function deleteTask(id){
   state.tasks=state.tasks.filter(x=>x.id!==id);
+  if(currentTaskId===id){
+    currentTaskId=null;
+    switchView(taskDetailReturnView||"today");
+  }
   saveState();
   renderAll();
 }
@@ -1388,7 +1688,7 @@ function renderProjectDetail(){
   els.detailTaskList.innerHTML=tasks.length?tasks.map(t=>`
     <div class="task-item ${t.done?"detail-task-done":""}">
       ${t.done?`<div class="done-icon">✓</div>`:`<input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">`}
-      <div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">
+      <div class="item-text"><div class="item-title"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','project-detail')">${escapeHtml(t.title)}</button></div><div class="item-meta">
         <span class="badge ${t.category}">${labelCategory(t.category)}</span>${t.due?dueBadge(t.due):""}${t.priorityDate===localDateKey()?`<span class="badge today">今日重点</span>`:""}
       </div></div>
       ${t.done?`<button class="delete-btn" type="button" onclick="toggleTask('${t.id}', false)" title="恢复为待办">↶</button>`:""}
@@ -1484,6 +1784,8 @@ function escapeHtml(value){
   })[ch]);
 }
 
+window.openTaskDetail=openTaskDetail;
+window.deleteTaskWorkLog=deleteTaskWorkLog;
 window.openProjectDetail=openProjectDetail;
 window.archiveProject=archiveProject;
 window.restoreProject=restoreProject;
