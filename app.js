@@ -5,6 +5,18 @@ const state = loadState();
 let activeFilter = "all";
 let noteTimer = null;
 
+// ---- Supabase / cloud sync state ----
+const CLOUD_TABLE = "research_desk_state";
+let supabaseClient = null;
+let currentUser = null;
+let cloudReady = false;
+let cloudSaveTimer = null;
+let cloudSaveInFlight = false;
+let cloudSaveQueued = false;
+let lastCloudUpdatedAt = null;
+let applyingCloudState = false;
+let cloudPollTimer = null;
+
 const els = {
   navItems: [...document.querySelectorAll(".nav-item")],
   views: [...document.querySelectorAll(".view")],
@@ -68,10 +80,35 @@ const els = {
   exportBtn: document.getElementById("exportBtn"),
   importInput: document.getElementById("importInput"),
   focusModeBtn: document.getElementById("focusModeBtn"),
+  exitFocusBtn: document.getElementById("exitFocusBtn"),
+
+  appShell: document.getElementById("appShell"),
+  authScreen: document.getElementById("authScreen"),
+  authLoginView: document.getElementById("authLoginView"),
+  authSignupView: document.getElementById("authSignupView"),
+  authRecoveryView: document.getElementById("authRecoveryView"),
+  authMessage: document.getElementById("authMessage"),
+  loginForm: document.getElementById("loginForm"),
+  loginEmail: document.getElementById("loginEmail"),
+  loginPassword: document.getElementById("loginPassword"),
+  signupForm: document.getElementById("signupForm"),
+  signupEmail: document.getElementById("signupEmail"),
+  signupPassword: document.getElementById("signupPassword"),
+  signupPassword2: document.getElementById("signupPassword2"),
+  recoveryForm: document.getElementById("recoveryForm"),
+  recoveryPassword: document.getElementById("recoveryPassword"),
+  showSignupBtn: document.getElementById("showSignupBtn"),
+  showLoginBtn: document.getElementById("showLoginBtn"),
+  forgotPasswordBtn: document.getElementById("forgotPasswordBtn"),
+  logoutBtn: document.getElementById("logoutBtn"),
+  manualSyncBtn: document.getElementById("manualSyncBtn"),
+  accountEmail: document.getElementById("accountEmail"),
+  syncStatus: document.getElementById("syncStatus"),
+  syncStatusText: document.getElementById("syncStatusText"),
+
   toast: document.getElementById("toast")
 };
 
-init();
 
 function defaultState(){
   return {
@@ -81,7 +118,8 @@ function defaultState(){
     projects: [],
     logs: [],
     notes: {},
-    settings: { focusMode: false }
+    settings: { focusMode: false },
+    meta: { localUpdatedAt: null }
   };
 }
 
@@ -105,6 +143,8 @@ function migrateToV2(s){
   if(!Array.isArray(s.logs)) s.logs = [];
   if(!s.notes || typeof s.notes !== "object") s.notes = {};
   if(!s.settings || typeof s.settings !== "object") s.settings = {focusMode:false};
+  if(!s.meta || typeof s.meta !== "object") s.meta = {localUpdatedAt:null};
+  if(!("localUpdatedAt" in s.meta)) s.meta.localUpdatedAt = null;
 
   // 给旧任务补齐 V2 字段。
   s.tasks.forEach(t=>{
@@ -155,8 +195,19 @@ function uidStatic(prefix="id"){
 }
 function uid(prefix="id"){ return uidStatic(prefix); }
 
-function saveState(){
+function saveState(options = {}){
+  const { touch = true, cloud = true } = options;
+
+  if(touch && !applyingCloudState){
+    if(!state.meta || typeof state.meta !== "object") state.meta = {};
+    state.meta.localUpdatedAt = new Date().toISOString();
+  }
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  if(cloud && cloudReady && currentUser && !applyingCloudState){
+    scheduleCloudSave();
+  }
 }
 
 function localDateKey(date = new Date()){
@@ -196,8 +247,7 @@ function projectName(id){
   return state.projects.find(p=>p.id===id)?.name || "未归属项目";
 }
 
-function init(){
-  // 清理 V1 的 service worker / cache，避免以后 GitHub 更新仍显示旧版。
+function initWorkspace(){
   cleanupOldOfflineCache();
 
   els.todayEyebrow.textContent = fmtDate();
@@ -227,6 +277,11 @@ function bindEvents(){
   els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
 
   document.addEventListener("keydown", e=>{
+    if(e.key==="Escape" && document.body.classList.contains("focus-mode")){
+      exitFocusMode();
+      return;
+    }
+
     if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return;
     if(e.key==="1") switchView("today");
     if(e.key==="2") switchView("projects");
@@ -380,10 +435,29 @@ function bindEvents(){
   els.exportBtn.addEventListener("click", exportData);
   els.importInput.addEventListener("change", importData);
 
-  els.focusModeBtn.addEventListener("click",()=>{
-    document.body.classList.toggle("focus-mode");
-    state.settings.focusMode=document.body.classList.contains("focus-mode");
-    saveState();
+  els.focusModeBtn.addEventListener("click", enterFocusMode);
+  els.exitFocusBtn.addEventListener("click", exitFocusMode);
+
+  // ---- Auth controls ----
+  els.loginForm.addEventListener("submit", handleLogin);
+  els.signupForm.addEventListener("submit", handleSignup);
+  els.recoveryForm.addEventListener("submit", handlePasswordRecoverySubmit);
+  els.showSignupBtn.addEventListener("click", ()=>showAuthView("signup"));
+  els.showLoginBtn.addEventListener("click", ()=>showAuthView("login"));
+  els.forgotPasswordBtn.addEventListener("click", handleForgotPassword);
+  els.logoutBtn.addEventListener("click", handleLogout);
+  els.manualSyncBtn.addEventListener("click", async ()=>{
+    await reconcileWithCloud({manual:true});
+  });
+
+  window.addEventListener("focus", ()=>{
+    if(cloudReady && currentUser) reconcileWithCloud();
+  });
+
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState==="visible" && cloudReady && currentUser){
+      reconcileWithCloud();
+    }
   });
 
   // 点击对话框灰色背景即可关闭。
@@ -392,6 +466,427 @@ function bindEvents(){
       if(e.target === dialog) dialog.close();
     });
   });
+}
+
+
+// ============================================================================
+// Authentication and cloud synchronization
+// ============================================================================
+
+async function boot(){
+  try{
+    if(!window.RESEARCH_DESK_CONFIG?.supabaseUrl || !window.RESEARCH_DESK_CONFIG?.supabasePublishableKey){
+      throw new Error("缺少 Supabase 配置。");
+    }
+    if(!window.supabase?.createClient){
+      throw new Error("Supabase 客户端加载失败，请检查网络连接。");
+    }
+
+    supabaseClient = window.supabase.createClient(
+      window.RESEARCH_DESK_CONFIG.supabaseUrl,
+      window.RESEARCH_DESK_CONFIG.supabasePublishableKey,
+      {
+        auth:{
+          persistSession:true,
+          autoRefreshToken:true,
+          detectSessionInUrl:true
+        }
+      }
+    );
+
+    // Workspace events are bound once; the app itself remains hidden until auth succeeds.
+    initWorkspace();
+
+    const { data:{ session }, error } = await supabaseClient.auth.getSession();
+    if(error) throw error;
+
+    if(session?.user){
+      await handleSignedIn(session.user);
+    }else{
+      showLoggedOut();
+    }
+
+    supabaseClient.auth.onAuthStateChange(async (event, session)=>{
+      if(event==="PASSWORD_RECOVERY"){
+        showAuthView("recovery");
+        return;
+      }
+
+      if(event==="SIGNED_IN" && session?.user){
+        if(currentUser?.id !== session.user.id || !cloudReady){
+          await handleSignedIn(session.user);
+        }
+      }
+
+      if(event==="SIGNED_OUT"){
+        showLoggedOut();
+      }
+    });
+
+  }catch(err){
+    console.error(err);
+    showLoggedOut();
+    showAuthMessage(`初始化失败：${friendlyError(err)}`, "error");
+  }
+}
+
+async function handleSignedIn(user){
+  currentUser = user;
+  cloudReady = false;
+  els.accountEmail.textContent = user.email || "已登录";
+  els.authScreen.hidden = true;
+  els.appShell.hidden = false;
+  setSyncStatus("syncing", "正在读取云端数据…");
+
+  await reconcileWithCloud({initial:true});
+
+  clearInterval(cloudPollTimer);
+  cloudPollTimer = setInterval(()=>{
+    if(document.visibilityState==="visible" && currentUser){
+      reconcileWithCloud();
+    }
+  }, 30000);
+}
+
+function showLoggedOut(){
+  currentUser = null;
+  cloudReady = false;
+  lastCloudUpdatedAt = null;
+  clearInterval(cloudPollTimer);
+  cloudPollTimer = null;
+
+  document.body.classList.remove("focus-mode");
+  els.appShell.hidden = true;
+  els.authScreen.hidden = false;
+  showAuthView("login");
+  setSyncStatus("idle", "未登录");
+}
+
+function showAuthView(view){
+  els.authLoginView.hidden = view!=="login";
+  els.authSignupView.hidden = view!=="signup";
+  els.authRecoveryView.hidden = view!=="recovery";
+  clearAuthMessage();
+}
+
+async function handleLogin(e){
+  e.preventDefault();
+  clearAuthMessage();
+
+  const email = els.loginEmail.value.trim();
+  const password = els.loginPassword.value;
+
+  if(!email || !password) return;
+
+  setAuthBusy(els.loginForm, true);
+  try{
+    const { error } = await supabaseClient.auth.signInWithPassword({email,password});
+    if(error) throw error;
+  }catch(err){
+    showAuthMessage(friendlyError(err), "error");
+  }finally{
+    setAuthBusy(els.loginForm, false);
+  }
+}
+
+async function handleSignup(e){
+  e.preventDefault();
+  clearAuthMessage();
+
+  const email = els.signupEmail.value.trim();
+  const p1 = els.signupPassword.value;
+  const p2 = els.signupPassword2.value;
+
+  if(p1 !== p2){
+    showAuthMessage("两次输入的密码不一致。", "error");
+    return;
+  }
+
+  setAuthBusy(els.signupForm, true);
+  try{
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password:p1,
+      options:{ emailRedirectTo:redirectTo }
+    });
+    if(error) throw error;
+
+    if(data.session){
+      showAuthMessage("账号已创建并登录。", "success");
+    }else{
+      showAuthMessage("账号已创建。请到邮箱中点击确认链接，然后返回本页面登录。", "success");
+    }
+  }catch(err){
+    showAuthMessage(friendlyError(err), "error");
+  }finally{
+    setAuthBusy(els.signupForm, false);
+  }
+}
+
+async function handleForgotPassword(){
+  clearAuthMessage();
+  const email = els.loginEmail.value.trim();
+
+  if(!email){
+    showAuthMessage("请先在邮箱框中填写你的登录邮箱。", "error");
+    els.loginEmail.focus();
+    return;
+  }
+
+  try{
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo});
+    if(error) throw error;
+    showAuthMessage("密码重置邮件已发送，请检查邮箱。", "success");
+  }catch(err){
+    showAuthMessage(friendlyError(err), "error");
+  }
+}
+
+async function handlePasswordRecoverySubmit(e){
+  e.preventDefault();
+  const password = els.recoveryPassword.value;
+
+  try{
+    const { error } = await supabaseClient.auth.updateUser({password});
+    if(error) throw error;
+    showAuthMessage("密码已经更新，可以继续使用科研工作台。", "success");
+    setTimeout(()=>showAuthView("login"),1200);
+  }catch(err){
+    showAuthMessage(friendlyError(err), "error");
+  }
+}
+
+async function handleLogout(){
+  try{
+    await flushCloudSave();
+    await supabaseClient.auth.signOut();
+  }catch(err){
+    console.error(err);
+    toast("退出登录时发生错误");
+  }
+}
+
+function setAuthBusy(form, busy){
+  form.querySelectorAll("button,input").forEach(el=>el.disabled=busy);
+}
+
+function showAuthMessage(message, type=""){
+  els.authMessage.textContent = message;
+  els.authMessage.className = `auth-message ${type}`.trim();
+  els.authMessage.hidden = false;
+}
+
+function clearAuthMessage(){
+  els.authMessage.hidden = true;
+  els.authMessage.textContent = "";
+  els.authMessage.className = "auth-message";
+}
+
+function setSyncStatus(stateName, text){
+  els.syncStatus.dataset.state = stateName;
+  els.syncStatusText.textContent = text;
+}
+
+function hasMeaningfulLocalData(s){
+  return Boolean(
+    s.tasks?.length ||
+    s.projects?.length ||
+    s.logs?.length ||
+    Object.values(s.notes || {}).some(v=>String(v||"").trim())
+  );
+}
+
+function cloneCloudState(){
+  return JSON.parse(JSON.stringify(state));
+}
+
+function applyCloudState(cloudData){
+  applyingCloudState = true;
+  try{
+    const restored = {...defaultState(), ...(cloudData || {})};
+    migrateToV2(restored);
+
+    Object.keys(state).forEach(k=>delete state[k]);
+    Object.assign(state, restored);
+
+    saveState({touch:false,cloud:false});
+    els.quickNote.value = state.notes[localDateKey()] || "";
+    renderAll();
+
+    if(state.settings.focusMode){
+      document.body.classList.add("focus-mode");
+    }else{
+      document.body.classList.remove("focus-mode");
+    }
+  }finally{
+    applyingCloudState = false;
+  }
+}
+
+async function fetchCloudRow(){
+  const {data,error} = await supabaseClient
+    .from(CLOUD_TABLE)
+    .select("data, updated_at")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if(error) throw error;
+  return data;
+}
+
+async function writeCloudState(){
+  if(!currentUser) return;
+
+  if(cloudSaveInFlight){
+    cloudSaveQueued = true;
+    return;
+  }
+
+  cloudSaveInFlight = true;
+  setSyncStatus("syncing","正在同步…");
+
+  try{
+    const payload = {
+      user_id: currentUser.id,
+      data: cloneCloudState(),
+      updated_at: new Date().toISOString()
+    };
+
+    const {data,error} = await supabaseClient
+      .from(CLOUD_TABLE)
+      .upsert(payload,{onConflict:"user_id"})
+      .select("updated_at")
+      .single();
+
+    if(error) throw error;
+
+    lastCloudUpdatedAt = data.updated_at;
+    setSyncStatus("ok","已同步");
+  }catch(err){
+    console.error("Cloud save failed",err);
+    setSyncStatus(navigator.onLine ? "error" : "offline",
+      navigator.onLine ? "同步失败，本地数据已保留" : "离线：等待重新同步");
+  }finally{
+    cloudSaveInFlight = false;
+    if(cloudSaveQueued){
+      cloudSaveQueued = false;
+      writeCloudState();
+    }
+  }
+}
+
+function scheduleCloudSave(){
+  clearTimeout(cloudSaveTimer);
+  setSyncStatus("syncing","等待同步…");
+  cloudSaveTimer = setTimeout(()=>writeCloudState(),650);
+}
+
+async function flushCloudSave(){
+  clearTimeout(cloudSaveTimer);
+  if(cloudReady && currentUser){
+    await writeCloudState();
+  }
+}
+
+async function reconcileWithCloud(options={}){
+  if(!currentUser) return;
+
+  setSyncStatus("syncing", options.manual ? "正在手动同步…" : "正在检查云端…");
+
+  try{
+    const row = await fetchCloudRow();
+
+    // First use: there is no cloud row. Preserve this browser's V3 data.
+    if(!row){
+      await writeCloudState();
+      cloudReady = true;
+      setSyncStatus("ok","已同步");
+      if(options.initial && hasMeaningfulLocalData(state)){
+        toast("本机已有数据已上传到云端");
+      }
+      return;
+    }
+
+    const localTs = state.meta?.localUpdatedAt
+      ? new Date(state.meta.localUpdatedAt).getTime()
+      : 0;
+    const cloudTs = row.updated_at
+      ? new Date(row.updated_at).getTime()
+      : 0;
+
+    // During first login, a V3 local dataset has no sync timestamp.
+    // If cloud already contains meaningful data, cloud wins.
+    const cloudHasData = hasMeaningfulLocalData(row.data || {});
+    const localHasData = hasMeaningfulLocalData(state);
+
+    if(options.initial){
+      if(cloudHasData && (!localHasData || cloudTs >= localTs || localTs===0)){
+        applyCloudState(row.data);
+        lastCloudUpdatedAt = row.updated_at;
+      }else if(localHasData && localTs > cloudTs){
+        await writeCloudState();
+      }else if(!cloudHasData && localHasData){
+        await writeCloudState();
+      }else{
+        applyCloudState(row.data || {});
+        lastCloudUpdatedAt = row.updated_at;
+      }
+    }else{
+      // Normal cross-device reconciliation.
+      if(cloudTs > localTs){
+        applyCloudState(row.data || {});
+        lastCloudUpdatedAt = row.updated_at;
+        if(options.manual) toast("已从云端更新");
+      }else if(localTs > cloudTs){
+        await writeCloudState();
+        if(options.manual) toast("本地更新已上传");
+      }
+    }
+
+    cloudReady = true;
+    setSyncStatus("ok","已同步");
+  }catch(err){
+    console.error("Cloud reconcile failed",err);
+    cloudReady = true; // allow local use and later retry
+    setSyncStatus(navigator.onLine ? "error" : "offline",
+      navigator.onLine ? "云端连接失败，本地仍可使用" : "离线模式");
+    if(options.manual) toast("同步失败，本地数据仍然安全");
+  }
+}
+
+function friendlyError(err){
+  const message = String(err?.message || err || "未知错误");
+
+  const map = [
+    [/Invalid login credentials/i,"邮箱或密码不正确。"],
+    [/Email not confirmed/i,"邮箱尚未确认，请先点击确认邮件中的链接。"],
+    [/User already registered/i,"这个邮箱已经注册，请直接登录。"],
+    [/Password should be at least/i,"密码长度不足。"],
+    [/Signups not allowed/i,"当前已关闭新用户注册。"],
+    [/rate limit/i,"操作过于频繁，请稍后再试。"],
+    [/Failed to fetch/i,"无法连接 Supabase，请检查网络。"]
+  ];
+
+  for(const [pattern,text] of map){
+    if(pattern.test(message)) return text;
+  }
+  return message;
+}
+
+
+function enterFocusMode(){
+  switchView("today");
+  document.body.classList.add("focus-mode");
+  state.settings.focusMode=true;
+  saveState();
+}
+
+function exitFocusMode(){
+  document.body.classList.remove("focus-mode");
+  state.settings.focusMode=false;
+  saveState();
 }
 
 function switchView(name){
@@ -863,3 +1358,6 @@ window.toggleTask=toggleTask;
 window.deleteTask=deleteTask;
 window.deleteProject=deleteProject;
 window.deleteLog=deleteLog;
+
+
+boot();
