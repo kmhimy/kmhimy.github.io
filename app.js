@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 11;
+const APP_VERSION = 12.1;
 
 const state = loadState();
 let activeFilter = "all";
@@ -41,28 +41,7 @@ const els = {
   views: [...document.querySelectorAll(".view")],
   sidebarCollapseBtn: document.getElementById("sidebarCollapseBtn"),
   pageTitle: document.getElementById("pageTitle"),
-  todayEyebrow: document.getElementById("todayEyebrow"),
-
-  priorityList: document.getElementById("priorityList"),
-  priorityCount: document.getElementById("priorityCount"),
-  priorityStat: document.getElementById("priorityStat"),
-  priorityForm: document.getElementById("priorityForm"),
-  priorityInput: document.getElementById("priorityInput"),
-
-  taskList: document.getElementById("taskList"),
-  doneList: document.getElementById("doneList"),
-  todayWorkLogList: document.getElementById("todayWorkLogList"),
-  todayWorkLogCount: document.getElementById("todayWorkLogCount"),
-  doneCount: document.getElementById("doneCount"),
-  openCount: document.getElementById("openCount"),
-  projectCount: document.getElementById("projectCount"),
-  filters: [...document.querySelectorAll(".filter")],
-
-  quickNote: document.getElementById("quickNote"),
-  noteSaved: document.getElementById("noteSaved"),
-
   addTaskTopBtn: document.getElementById("addTaskTopBtn"),
-  addTaskInlineBtn: document.getElementById("addTaskInlineBtn"),
   taskDialog: document.getElementById("taskDialog"),
   taskForm: document.getElementById("taskForm"),
   taskTitle: document.getElementById("taskTitle"),
@@ -162,6 +141,27 @@ const els = {
   dashboardTimelineList: document.getElementById("dashboardTimelineList"),
   dashboardOpenTimelineBtn: document.getElementById("dashboardOpenTimelineBtn"),
 
+  todayDateLabel: document.getElementById("todayDateLabel"),
+  todayOpeningLine: document.getElementById("todayOpeningLine"),
+  todayReviewYesterdayBtn: document.getElementById("todayReviewYesterdayBtn"),
+  todayFocusBtn: document.getElementById("todayFocusBtn"),
+  todayAddTaskBtn: document.getElementById("todayAddTaskBtn"),
+  todayTop3Progress: document.getElementById("todayTop3Progress"),
+  todayTop3List: document.getElementById("todayTop3List"),
+  todayTop3TaskSelect: document.getElementById("todayTop3TaskSelect"),
+  todayTop3AddBtn: document.getElementById("todayTop3AddBtn"),
+  todayYesterdayCount: document.getElementById("todayYesterdayCount"),
+  todayYesterdayList: document.getElementById("todayYesterdayList"),
+  todayContinueCount: document.getElementById("todayContinueCount"),
+  todayContinueList: document.getElementById("todayContinueList"),
+  todayActiveTaskList: document.getElementById("todayActiveTaskList"),
+  todayDoneNumber: document.getElementById("todayDoneNumber"),
+  todayOpenNumber: document.getElementById("todayOpenNumber"),
+  todayProjectNumber: document.getElementById("todayProjectNumber"),
+  todayWorkLogNumber: document.getElementById("todayWorkLogNumber"),
+  todayDoneList: document.getElementById("todayDoneList"),
+  todayDailyNote: document.getElementById("todayDailyNote"),
+  todayDailyNoteSaveBtn: document.getElementById("todayDailyNoteSaveBtn"),
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
   archiveWrap: document.getElementById("archiveWrap"),
@@ -423,9 +423,6 @@ function projectName(id){
 function initWorkspace(){
   cleanupOldOfflineCache();
 
-  els.todayEyebrow.textContent = fmtDate();
-  els.quickNote.value = state.notes[localDateKey()] || "";
-
   if(sidebarCollapsed){
     document.body.classList.add("sidebar-collapsed");
   }
@@ -515,6 +512,7 @@ function bindEvents(){
   });
 
   document.addEventListener("keydown", e=>{
+    if(e.key==="Escape" && todayFocusMode){toggleTodayFocus(false);return;}
     if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k"){
       e.preventDefault();
       if(els.searchDialog.open) closeGlobalSearch();
@@ -544,39 +542,7 @@ function bindEvents(){
     if(e.key==="9") switchView("project-dashboard");
     if(e.key.toLowerCase()==="n") openTaskDialog();
   });
-
-  els.priorityForm.addEventListener("submit", e=>{
-    e.preventDefault();
-    const title = els.priorityInput.value.trim();
-    if(!title) return;
-
-    if(todayPriorityTasks().length >= 3){
-      toast("今日重点已经有 3 项，请先移除一项。");
-      return;
-    }
-
-    state.tasks.push({
-      id:uid("task"),
-      title,
-      category:"research",
-      projectId:null,
-      due:null,
-      createdAt:new Date().toISOString(),
-      done:false,
-      completedAt:null,
-      priorityDate:localDateKey(),
-      detailsMarkdown:"",
-      workLogs:[]
-    });
-
-    els.priorityInput.value="";
-    saveState();
-    renderAll();
-    toast("已加入今日重点和待办事项");
-  });
-
   els.addTaskTopBtn.addEventListener("click", openTaskDialog);
-  els.addTaskInlineBtn.addEventListener("click", openTaskDialog);
   els.closeTaskDialogBtn.addEventListener("click", closeTaskDialog);
   els.cancelTaskBtn.addEventListener("click", closeTaskDialog);
 
@@ -616,23 +582,6 @@ function bindEvents(){
     renderAll();
     toast(makePriority ? "任务已添加，并设为今日重点" : "任务已添加");
   });
-
-  els.filters.forEach(btn=>btn.addEventListener("click",()=>{
-    activeFilter=btn.dataset.filter;
-    els.filters.forEach(x=>x.classList.toggle("active",x===btn));
-    renderTasks();
-  }));
-
-  els.quickNote.addEventListener("input",()=>{
-    clearTimeout(noteTimer);
-    noteTimer=setTimeout(()=>{
-      state.notes[localDateKey()]=els.quickNote.value;
-      saveState();
-      els.noteSaved.classList.add("show");
-      setTimeout(()=>els.noteSaved.classList.remove("show"),900);
-    },350);
-  });
-
   els.backFromTaskBtn.addEventListener("click", ()=>{
     if(currentTaskId) saveTaskDetailsNow();
     currentTaskId=null;
@@ -696,6 +645,16 @@ function bindEvents(){
     timelineRangeFilter=els.timelineRangeFilter.value;
     renderTimeline();
   });
+  els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
+  els.todayTop3AddBtn.addEventListener("click",addTodayTop3);
+  els.todayDailyNoteSaveBtn.addEventListener("click",saveTodayDailyNote);
+  els.todayFocusBtn.addEventListener("click",()=>toggleTodayFocus());
+  els.todayReviewYesterdayBtn.addEventListener("click",showYesterdayReview);
+  document.querySelectorAll("[data-today-filter]").forEach(btn=>btn.addEventListener("click",()=>{
+    todayTaskFilter=btn.dataset.todayFilter;
+    document.querySelectorAll("[data-today-filter]").forEach(x=>x.classList.toggle("active",x===btn));
+    renderTodayActiveTasks();
+  }));
   els.emptyTrashBtn.addEventListener("click",emptyTrash);
   els.dashboardProjectSelect.addEventListener("change",()=>{dashboardProjectId=els.dashboardProjectSelect.value||null;saveDashboardPreference();renderProjectDashboard();});
   els.dashboardOpenProjectBtn.addEventListener("click",()=>{if(dashboardProjectId)openProjectDetail(dashboardProjectId);});
@@ -1114,7 +1073,6 @@ function applyCloudState(cloudData){
     Object.assign(state, restored);
 
     saveState({touch:false,cloud:false});
-    els.quickNote.value = state.notes[localDateKey()] || "";
     applyAppearanceSettings();
     renderAll();
 
@@ -1393,6 +1351,7 @@ function switchView(name){
   if(name==="appearance") renderAppearanceControls();
   if(name==="timeline") renderTimeline();
   if(name==="trash") renderTrash();
+  if(name==="today") renderToday();
   if(name==="project-dashboard") renderProjectDashboard();
 }
 
@@ -1565,6 +1524,160 @@ function resetAppearanceSettings(){
   toast("已恢复默认外观");
 }
 
+
+// ============================================================================
+// V12 — Today: daily research command center
+// ============================================================================
+
+let todayTaskFilter="all";
+let todayFocusMode=false;
+
+function localDateKey(value=new Date()){
+  const d=value instanceof Date?value:new Date(value);
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function yesterdayKey(){
+  const d=new Date();d.setDate(d.getDate()-1);return localDateKey(d);
+}
+function ensureDailyState(){
+  if(!state.daily || typeof state.daily!=="object") state.daily={};
+  const key=localDateKey();
+  if(!state.daily[key]) state.daily[key]={top3:[],note:""};
+  if(!Array.isArray(state.daily[key].top3)) state.daily[key].top3=[];
+  if(typeof state.daily[key].note!=="string") state.daily[key].note="";
+  state.daily[key].top3=state.daily[key].top3.filter(id=>state.tasks.some(t=>t.id===id)).slice(0,3);
+  return state.daily[key];
+}
+function renderToday(){
+  if(!els.todayTop3List) return;
+  const daily=ensureDailyState();
+  const now=new Date();
+  const week=["星期日","星期一","星期二","星期三","星期四","星期五","星期六"][now.getDay()];
+  els.todayDateLabel.textContent=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week}`;
+  const y=state.daily?.[yesterdayKey()];
+  els.todayOpeningLine.textContent=y?.note?.trim()?`昨天留下：${y.note.trim()}`:"先看清楚昨天做到哪里，再决定今天真正要推进什么。";
+  renderTodayTop3(daily);
+  renderTodayContinuity();
+  renderTodayActiveTasks();
+  renderTodayProgress();
+  els.todayDailyNote.value=daily.note||"";
+  els.todayFocusBtn.textContent=todayFocusMode?"退出专注":"专注模式";
+}
+function renderTodayTop3(daily){
+  const top3=daily.top3.map(id=>state.tasks.find(t=>t.id===id)).filter(Boolean);
+  els.todayTop3Progress.textContent=`${top3.filter(t=>t.done).length} / 3`;
+  els.todayTop3List.innerHTML=top3.length?top3.map((t,i)=>`
+    <div class="today-top3-item">
+      <span class="today-top3-index">${i+1}</span>
+      <div><button class="today-top3-title ${t.done?"done":""}" type="button" onclick="openTaskDetail('${escapeAttr(t.id)}','today')">${escapeHtml(t.title)}</button>
+      <div class="today-top3-project">${escapeHtml(t.projectId?projectName(t.projectId):"未归属项目")}</div></div>
+      <button class="today-top3-check ${t.done?"done":""}" type="button" onclick="toggleTodayTask('${escapeAttr(t.id)}')">${t.done?"✓":""}</button>
+      <button class="today-top3-remove" type="button" title="移出今日重点" onclick="removeTodayTop3('${escapeAttr(t.id)}')">×</button>
+    </div>`).join(""):`<div class="empty">今天还没有设置重点。从下面选择最多三项真正重要的工作。</div>`;
+  const candidates=state.tasks.filter(t=>!t.done&&!daily.top3.includes(t.id));
+  els.todayTop3TaskSelect.innerHTML=candidates.length?`<option value="">选择一个任务…</option>`+candidates.map(t=>`<option value="${escapeAttr(t.id)}">${escapeHtml(t.title)} · ${escapeHtml(t.projectId?projectName(t.projectId):"未归属")}</option>`).join(""):`<option value="">暂无可选任务</option>`;
+  els.todayTop3AddBtn.disabled=top3.length>=3||!candidates.length;
+}
+function addTodayTop3(){
+  const daily=ensureDailyState(),id=els.todayTop3TaskSelect.value;
+  if(!id)return;
+  if(daily.top3.length>=3)return toast("今日重点最多三项");
+  if(!daily.top3.includes(id))daily.top3.push(id);
+  saveState();renderToday();toast("已加入今日重点");
+}
+function removeTodayTop3(id){
+  const daily=ensureDailyState();daily.top3=daily.top3.filter(x=>x!==id);
+  saveState();renderToday();
+}
+function toggleTodayTask(id){
+  const t=state.tasks.find(x=>x.id===id);if(!t)return;
+  t.done=!t.done;t.completedAt=t.done?new Date().toISOString():null;
+  saveState();renderAll();toast(t.done?"任务已完成":"任务已重新打开");
+}
+function taskLastWorkLog(task){
+  return [...(task.workLogs||[])].filter(x=>x.createdAt).sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0]||null;
+}
+function shortText(s,n=100){
+  const x=String(s||"").replace(/\s+/g," ").trim();return x.length>n?x.slice(0,n)+"…":x;
+}
+function renderTodayContinuity(){
+  const yKey=yesterdayKey();
+  const yesterdayEvents=[];
+  state.tasks.forEach(t=>{
+    (t.workLogs||[]).forEach(l=>{if(l.createdAt&&localDateKey(l.createdAt)===yKey)yesterdayEvents.push({task:t,log:l});});
+    if(t.completedAt&&localDateKey(t.completedAt)===yKey)yesterdayEvents.push({task:t,completed:true,date:t.completedAt});
+  });
+  yesterdayEvents.sort((a,b)=>(b.log?.createdAt||b.date||"").localeCompare(a.log?.createdAt||a.date||""));
+  els.todayYesterdayCount.textContent=yesterdayEvents.length;
+  els.todayYesterdayList.innerHTML=yesterdayEvents.length?yesterdayEvents.slice(0,6).map(e=>`
+    <div class="today-continuity-item"><button type="button" onclick="openTaskDetail('${escapeAttr(e.task.id)}','today')">${escapeHtml(e.task.title)}</button>
+    <div class="today-continuity-meta">${escapeHtml(e.task.projectId?projectName(e.task.projectId):"未归属项目")} · ${e.completed?"昨天完成":"Work Log"}</div>
+    ${e.log?`<div class="today-continuity-note">${escapeHtml(shortText(e.log.content,120))}</div>`:""}</div>`).join(""):`<div class="empty">昨天没有记录到 Work Log 或完成任务。</div>`;
+
+  const daily=ensureDailyState();
+  const continuation=state.tasks.filter(t=>!t.done).map(t=>({task:t,last:taskLastWorkLog(t)}))
+    .filter(x=>daily.top3.includes(x.task.id)||x.last)
+    .sort((a,b)=>{
+      const af=daily.top3.includes(a.task.id)?1:0,bf=daily.top3.includes(b.task.id)?1:0;
+      if(af!==bf)return bf-af;
+      return (b.last?.createdAt||"").localeCompare(a.last?.createdAt||"");
+    }).slice(0,6);
+  els.todayContinueCount.textContent=continuation.length;
+  els.todayContinueList.innerHTML=continuation.length?continuation.map(x=>`
+    <div class="today-continuity-item"><button type="button" onclick="openTaskDetail('${escapeAttr(x.task.id)}','today')">${escapeHtml(x.task.title)}</button>
+    <div class="today-continuity-meta">${daily.top3.includes(x.task.id)?"今日重点 · ":""}${escapeHtml(x.task.projectId?projectName(x.task.projectId):"未归属项目")}</div>
+    <div class="today-continuity-note">${x.last?`上次做到：${escapeHtml(shortText(x.last.content,110))}`:"今日重点，等待开始记录。"}</div></div>`).join(""):`<div class="empty">暂无需要续接的任务。把重要任务加入“今日重点”即可。</div>`;
+}
+function renderTodayActiveTasks(){
+  let tasks=state.tasks.filter(t=>!t.done);
+  if(todayTaskFilter!=="all")tasks=tasks.filter(t=>t.category===todayTaskFilter);
+  const daily=ensureDailyState();
+  tasks.sort((a,b)=>{
+    const af=daily.top3.includes(a.id)?1:0,bf=daily.top3.includes(b.id)?1:0;
+    if(af!==bf)return bf-af;
+    if(a.due&&b.due)return a.due.localeCompare(b.due);
+    return a.due?-1:b.due?1:0;
+  });
+  els.todayActiveTaskList.innerHTML=tasks.length?tasks.slice(0,16).map(t=>`
+    <div class="today-task-row">
+      <button class="today-task-check" type="button" onclick="toggleTodayTask('${escapeAttr(t.id)}')"></button>
+      <div class="today-task-main"><button type="button" onclick="openTaskDetail('${escapeAttr(t.id)}','today')">${escapeHtml(t.title)}</button>
+      <div class="today-task-meta">${daily.top3.includes(t.id)?"今日重点 · ":""}${escapeHtml(t.projectId?projectName(t.projectId):"未归属项目")} · ${escapeHtml(labelCategory(t.category))}${t.workLogs?.length?` · ${t.workLogs.length} 条 Work Log`:""}</div></div>
+      <span class="today-task-due">${t.due?escapeHtml(t.due):""}</span>
+    </div>`).join(""):`<div class="empty">这个分类暂时没有待办任务。</div>`;
+}
+function renderTodayProgress(){
+  const key=localDateKey();
+  const done=state.tasks.filter(t=>t.done&&t.completedAt&&localDateKey(t.completedAt)===key);
+  const logs=state.tasks.flatMap(t=>(t.workLogs||[]).filter(l=>l.createdAt&&localDateKey(l.createdAt)===key).map(l=>({task:t,log:l})));
+  const activeProjects=new Set(state.tasks.filter(t=>!t.done&&t.projectId).map(t=>t.projectId));
+  els.todayDoneNumber.textContent=done.length;
+  els.todayOpenNumber.textContent=state.tasks.filter(t=>!t.done).length;
+  els.todayProjectNumber.textContent=activeProjects.size;
+  els.todayWorkLogNumber.textContent=logs.length;
+  const events=[
+    ...done.map(t=>({date:t.completedAt,title:t.title,task:t,type:"完成任务"})),
+    ...logs.map(x=>({date:x.log.createdAt,title:x.task.title,task:x.task,type:"Work Log"}))
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+  els.todayDoneList.innerHTML=events.length?events.slice(0,8).map(e=>`
+    <div class="today-done-item"><button type="button" onclick="openTaskDetail('${escapeAttr(e.task.id)}','today')">${escapeHtml(e.title)}</button>
+    <div class="today-done-time">${escapeHtml(e.type)} · ${escapeHtml(formatDateTime(e.date))}</div></div>`).join(""):`<div class="empty">今天还没有完成记录。每一条 Work Log 都会成为可见的推进证据。</div>`;
+}
+function saveTodayDailyNote(){
+  const daily=ensureDailyState();daily.note=els.todayDailyNote.value.trim();
+  saveState();renderToday();toast("今日小结已保存");
+}
+function toggleTodayFocus(force){
+  todayFocusMode=typeof force==="boolean"?force:!todayFocusMode;
+  document.body.classList.toggle("today-focus-mode",todayFocusMode);
+  els.todayFocusBtn.textContent=todayFocusMode?"退出专注":"专注模式";
+}
+function showYesterdayReview(){
+  const y=state.daily?.[yesterdayKey()];
+  const text=y?.note?.trim()||"昨天没有保存日终小结。";
+  alert(`昨天回顾\n\n${text}`);
+}
 
 // ============================================================================
 // V11 — Research Dashboard
@@ -2159,31 +2272,7 @@ function todayTaskWorkLogs(){
   return items.sort((a,b)=>(b.log.createdAt||"").localeCompare(a.log.createdAt||""));
 }
 
-function renderTodayWorkLogs(){
-  if(!els.todayWorkLogList) return;
 
-  const items=todayTaskWorkLogs();
-  els.todayWorkLogCount.textContent=items.length;
-
-  if(!items.length){
-    els.todayWorkLogList.innerHTML=`<div class="empty">今天还没有任务工作记录。即使一个任务尚未完成，也建议把实际推进写进任务详情里的“工作记录”。</div>`;
-    return;
-  }
-
-  els.todayWorkLogList.innerHTML=items.map(({task,log})=>`
-    <div class="today-progress-item">
-      <div class="today-progress-time">${formatTimeOnly(log.createdAt)}</div>
-      <div>
-        <button class="today-progress-task" type="button"
-          onclick="openTaskWorkLogFromSearch('${task.id}','${log.id}','today')">${escapeHtml(task.title)}</button>
-        <div class="today-progress-project">${task.projectId?escapeHtml(projectName(task.projectId)):"未归属项目"}</div>
-        <div class="today-progress-excerpt">${escapeHtml(makePlainExcerpt(log.content,220))}</div>
-      </div>
-      <button class="today-progress-open" type="button"
-        onclick="openTaskWorkLogFromSearch('${task.id}','${log.id}','today')" title="打开工作记录">›</button>
-    </div>
-  `).join("");
-}
 
 function formatTimeOnly(iso){
   if(!iso) return "";
@@ -2726,114 +2815,13 @@ function renderAll(){
   if(currentTaskId) renderTaskDetail();
 }
 
-function renderToday(){
-  renderPriorities();
-  renderTasks();
-  renderDone();
-  renderTodayWorkLogs();
 
-  els.doneCount.textContent=todayDoneTasks().length;
-  els.openCount.textContent=state.tasks.filter(t=>!t.done).length;
-  els.projectCount.textContent=state.projects.filter(p=>p.status==="active").length;
 
-  const pc = todayPriorityTasks().length;
-  els.priorityStat.textContent=`${pc} / 3`;
-}
 
-function renderPriorities(){
-  const items=[...todayPriorityTasks()].sort((a,b)=>{
-    if(a.done!==b.done) return Number(a.done)-Number(b.done);
-    return a.createdAt.localeCompare(b.createdAt);
-  });
 
-  els.priorityCount.textContent=`${items.length} / 3`;
 
-  if(!items.length){
-    els.priorityList.innerHTML=`<div class="empty">今天还没有设置重点。建议只挑最重要的 1–3 件事。</div>`;
-    return;
-  }
 
-  els.priorityList.innerHTML=items.map(t=>`
-    <div class="priority-item">
-      <input class="check" type="checkbox" ${t.done?"checked":""}
-        onchange="toggleTask('${t.id}', ${!t.done})">
-      <div class="item-text">
-        <div class="item-title ${t.done?"done":""}"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
-        <div class="item-meta">
-          ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
-          ${t.due?dueBadge(t.due):""}
-        </div>
-      </div>
-      <button class="delete-btn" type="button"
-        onclick="removePriority('${t.id}')" title="移出今日重点">×</button>
-    </div>
-  `).join("");
-}
 
-function renderTasks(){
-  let items=state.tasks.filter(t=>!t.done);
-
-  if(activeFilter!=="all"){
-    items=items.filter(t=>t.category===activeFilter);
-  }
-
-  items.sort((a,b)=>{
-    if(Boolean(a.priorityDate===localDateKey()) !== Boolean(b.priorityDate===localDateKey())){
-      return a.priorityDate===localDateKey() ? -1 : 1;
-    }
-    if(a.due && b.due) return a.due.localeCompare(b.due);
-    if(a.due) return -1;
-    if(b.due) return 1;
-    return b.createdAt.localeCompare(a.createdAt);
-  });
-
-  if(!items.length){
-    els.taskList.innerHTML=`<div class="empty">这里暂时没有待办事项。</div>`;
-    return;
-  }
-
-  els.taskList.innerHTML=items.map(t=>`
-    <div class="task-item">
-      <input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">
-      <div class="item-text">
-        <div class="item-title"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
-        <div class="item-meta">
-          <span class="badge ${t.category}">${labelCategory(t.category)}</span>
-          ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
-          ${t.due?dueBadge(t.due):""}
-        </div>
-      </div>
-      <button class="priority-toggle ${t.priorityDate===localDateKey()?"active":""}" type="button"
-        onclick="togglePriority('${t.id}')" title="${t.priorityDate===localDateKey()?"移出今日重点":"设为今日重点"}">
-        ${t.priorityDate===localDateKey()?"★":"☆"}
-      </button>
-      <button class="delete-btn" type="button" onclick="deleteTask('${t.id}')" title="删除任务">×</button>
-    </div>
-  `).join("");
-}
-
-function renderDone(){
-  const items=todayDoneTasks().sort((a,b)=>b.completedAt.localeCompare(a.completedAt));
-
-  if(!items.length){
-    els.doneList.innerHTML=`<div class="empty">今天还没有完成事项。完成后的任务会自动记录在这里。</div>`;
-    return;
-  }
-
-  els.doneList.innerHTML=items.map(t=>`
-    <div class="done-item">
-      <div class="done-icon">✓</div>
-      <div class="item-text">
-        <div class="item-title"><button class="task-title-link" type="button" onclick="openTaskDetail('${t.id}','today')">${escapeHtml(t.title)}</button></div>
-        <div class="item-meta">
-          ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
-          ${t.priorityDate===localDateKey()?`<span class="badge today">今日重点</span>`:""}
-        </div>
-      </div>
-      <button class="delete-btn" type="button" onclick="toggleTask('${t.id}', false)" title="恢复为待办">↶</button>
-    </div>
-  `).join("");
-}
 
 function renderProjects(){
   const current=state.projects
@@ -3776,7 +3764,6 @@ function importData(e){
       Object.assign(state, restored);
 
       saveState();
-      els.quickNote.value=state.notes[localDateKey()] || "";
       renderAll();
       toast("数据已导入");
     }catch(err){
@@ -3828,3 +3815,6 @@ window.deleteLog=deleteLog;
 
 
 boot();
+
+window.toggleTodayTask=toggleTodayTask;
+window.removeTodayTop3=removeTodayTop3;
