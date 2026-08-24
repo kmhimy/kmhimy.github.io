@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 13;
+const APP_VERSION = 13.1;
 
 const state = loadState();
 let activeFilter = "all";
@@ -165,6 +165,7 @@ const els = {
   todayProjectNumber: document.getElementById("todayProjectNumber"),
   todayWorkLogNumber: document.getElementById("todayWorkLogNumber"),
   todayDoneList: document.getElementById("todayDoneList"),
+  restoreTodayProgressBtn: document.getElementById("restoreTodayProgressBtn"),
   todayDailyNote: document.getElementById("todayDailyNote"),
   todayDailyNoteSaveBtn: document.getElementById("todayDailyNoteSaveBtn"),
   projectGrid: document.getElementById("projectGrid"),
@@ -661,6 +662,7 @@ function bindEvents(){
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
   els.todayTop3AddBtn.addEventListener("click",addTodayTop3);
   els.todayDailyNoteSaveBtn.addEventListener("click",saveTodayDailyNote);
+  els.restoreTodayProgressBtn.addEventListener("click",restoreAllTodayProgress);
   els.todayFocusBtn.addEventListener("click",()=>toggleTodayFocus());
   els.todayReviewYesterdayBtn.addEventListener("click",showYesterdayReview);
   document.querySelectorAll("[data-today-filter]").forEach(btn=>btn.addEventListener("click",()=>{
@@ -1604,9 +1606,10 @@ function yesterdayKey(){
 function ensureDailyState(){
   if(!state.daily || typeof state.daily!=="object") state.daily={};
   const key=localDateKey();
-  if(!state.daily[key]) state.daily[key]={top3:[],note:""};
+  if(!state.daily[key]) state.daily[key]={top3:[],note:"",hiddenProgress:[]};
   if(!Array.isArray(state.daily[key].top3)) state.daily[key].top3=[];
   if(typeof state.daily[key].note!=="string") state.daily[key].note="";
+  if(!Array.isArray(state.daily[key].hiddenProgress)) state.daily[key].hiddenProgress=[];
   state.daily[key].top3=state.daily[key].top3.filter(id=>state.tasks.some(t=>t.id===id)).slice(0,3);
   return state.daily[key];
 }
@@ -1710,21 +1713,83 @@ function renderTodayActiveTasks(){
 }
 function renderTodayProgress(){
   const key=localDateKey();
-  const done=state.tasks.filter(t=>t.done&&t.completedAt&&localDateKey(t.completedAt)===key);
-  const logs=state.tasks.flatMap(t=>(t.workLogs||[]).filter(l=>l.createdAt&&localDateKey(l.createdAt)===key).map(l=>({task:t,log:l})));
-  const activeProjects=new Set(state.tasks.filter(t=>!t.done&&t.projectId).map(t=>t.projectId));
+  const daily=ensureDailyState();
+  const hidden=new Set(daily.hiddenProgress||[]);
+
+  const done=state.tasks.filter(t=>
+    t.done && t.completedAt && localDateKey(t.completedAt)===key
+  );
+
+  const logs=state.tasks.flatMap(t=>
+    (t.workLogs||[])
+      .filter(l=>l.createdAt && localDateKey(l.createdAt)===key)
+      .map(l=>({task:t,log:l}))
+  );
+
+  const activeProjects=new Set(
+    state.tasks.filter(t=>!t.done&&t.projectId).map(t=>t.projectId)
+  );
+
   els.todayDoneNumber.textContent=done.length;
   els.todayOpenNumber.textContent=state.tasks.filter(t=>!t.done).length;
   els.todayProjectNumber.textContent=activeProjects.size;
   els.todayWorkLogNumber.textContent=logs.length;
+
   const events=[
-    ...done.map(t=>({date:t.completedAt,title:t.title,task:t,type:"完成任务"})),
-    ...logs.map(x=>({date:x.log.createdAt,title:x.task.title,task:x.task,type:"Work Log"}))
-  ].sort((a,b)=>b.date.localeCompare(a.date));
-  els.todayDoneList.innerHTML=events.length?events.slice(0,8).map(e=>`
-    <div class="today-done-item"><button type="button" onclick="openTaskDetail('${escapeAttr(e.task.id)}','today')">${escapeHtml(e.title)}</button>
-    <div class="today-done-time">${escapeHtml(e.type)} · ${escapeHtml(formatDateTime(e.date))}</div></div>`).join(""):`<div class="empty">今天还没有完成记录。每一条 Work Log 都会成为可见的推进证据。</div>`;
+    ...done.map(t=>({
+      id:`completed-task:${t.id}`,
+      date:t.completedAt,
+      title:t.title,
+      task:t,
+      type:"完成任务"
+    })),
+    ...logs.map(x=>({
+      id:`worklog:${x.task.id}:${x.log.id}`,
+      date:x.log.createdAt,
+      title:x.task.title,
+      task:x.task,
+      log:x.log,
+      type:"Work Log"
+    }))
+  ]
+  .filter(e=>!hidden.has(e.id))
+  .sort((a,b)=>b.date.localeCompare(a.date));
+
+  els.todayDoneList.innerHTML=events.length
+    ?events.slice(0,12).map(e=>`
+      <div class="today-done-item today-progress-entry">
+        <div class="today-progress-entry-main">
+          <button type="button"
+            onclick="openTaskDetail('${escapeAttr(e.task.id)}','today')">${escapeHtml(e.title)}</button>
+          <div class="today-done-time">${escapeHtml(e.type)} · ${escapeHtml(formatDateTime(e.date))}</div>
+        </div>
+        <button class="today-progress-remove" type="button"
+          onclick="hideTodayProgressItem('${escapeAttr(e.id)}')"
+          title="从今天推进记录中移除">×</button>
+      </div>
+    `).join("")
+    :`<div class="empty">今天还没有保留的推进记录。完成任务或写下 Work Log 后会出现在这里。</div>`;
 }
+
+function hideTodayProgressItem(eventId){
+  const daily=ensureDailyState();
+  daily.hiddenProgress=daily.hiddenProgress||[];
+  if(!daily.hiddenProgress.includes(eventId)){
+    daily.hiddenProgress.push(eventId);
+  }
+  saveState();
+  renderTodayProgress();
+  toast("已从“今天推进了什么”中移除");
+}
+
+function restoreAllTodayProgress(){
+  const daily=ensureDailyState();
+  daily.hiddenProgress=[];
+  saveState();
+  renderTodayProgress();
+  toast("已恢复今天的全部推进记录");
+}
+
 function saveTodayDailyNote(){
   const daily=ensureDailyState();daily.note=els.todayDailyNote.value.trim();
   saveState();renderToday();toast("今日小结已保存");
@@ -3879,3 +3944,5 @@ boot();
 
 window.toggleTodayTask=toggleTodayTask;
 window.removeTodayTop3=removeTodayTop3;
+
+window.hideTodayProgressItem=hideTodayProgressItem;

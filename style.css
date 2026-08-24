@@ -2713,3 +2713,49 @@ body.today-focus-mode .today-top3-item{
     var(--cat-admin) 66% 100%
   )!important;
 }
+
+/* ==========================================================================
+   V13.1 — Today progress entries can be removed without deleting source data
+   ========================================================================== */
+.today-done-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.today-restore-progress-btn{
+  border:0;
+  background:transparent;
+  color:#98a1a7;
+  font-size:11px;
+  padding:4px 0;
+  cursor:pointer;
+}
+.today-restore-progress-btn:hover{
+  color:var(--accent);
+}
+.today-progress-entry{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.today-progress-entry-main{
+  min-width:0;
+  flex:1;
+}
+.today-progress-remove{
+  flex:0 0 auto;
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#a6adb2;
+  font-size:16px;
+  cursor:pointer;
+}
+.today-progress-remove:hover{
+  background:#f1f3f3;
+  color:#825858;
+}
