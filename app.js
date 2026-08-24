@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 14.1;
+const APP_VERSION = 14.11;
 
 const state = loadState();
 let activeFilter = "all";
@@ -502,7 +502,7 @@ function exportFullBackup(){
 
 function openRenameTaskDialog(){
   const task=state.tasks.find(t=>t.id===currentTaskId);
-  if(!task) return;
+  if(!task || !els.renameTaskInput || !els.renameTaskDialog) return;
   els.renameTaskInput.value=task.title||"";
   els.renameTaskDialog.showModal();
   setTimeout(()=>{els.renameTaskInput.focus();els.renameTaskInput.select();},0);
@@ -731,10 +731,10 @@ function bindEvents(){
   });
   els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
-  els.renameTaskBtn.addEventListener("click",openRenameTaskDialog);
-  els.renameTaskCloseBtn.addEventListener("click",closeRenameTaskDialog);
-  els.renameTaskCancelBtn.addEventListener("click",closeRenameTaskDialog);
-  els.renameTaskForm.addEventListener("submit",saveRenamedTask);
+  if(els.renameTaskBtn) els.renameTaskBtn.addEventListener("click",openRenameTaskDialog);
+  if(els.renameTaskCloseBtn) els.renameTaskCloseBtn.addEventListener("click",closeRenameTaskDialog);
+  if(els.renameTaskCancelBtn) els.renameTaskCancelBtn.addEventListener("click",closeRenameTaskDialog);
+  if(els.renameTaskForm) els.renameTaskForm.addEventListener("submit",saveRenamedTask);
   if(els.v14BackupBtn) els.v14BackupBtn.addEventListener("click",exportFullBackup);
   els.adminAddTaskBtn.addEventListener("click",openAdminTaskDialog);
   els.adminFilterBtns.forEach(btn=>btn.addEventListener("click",()=>{

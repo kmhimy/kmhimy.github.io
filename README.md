@@ -277,3 +277,16 @@ V12.8 专注模式使用独立布局：
 - 自动选中原名称，便于快速修改
 - 保存后立即刷新 Today、日历、项目、事务、搜索等所有引用该任务名称的位置
 - 只修改任务 title，不改变项目归属、分类、完成状态、Work Log 或科研笔记
+
+
+## V14.1.1 — 任务重命名初始化修复
+
+修复 `Cannot read properties of null (reading 'addEventListener')`。
+
+根因：任务重命名弹窗 DOM 位于 `app.js` 之后，脚本初始化时元素尚未被浏览器解析。
+
+修复：
+- 将 `renameTaskDialog` 移到 `app.js` 之前
+- 对重命名相关事件绑定增加空值保护
+- 对打开重命名弹窗增加 DOM 防御性检查
+- JavaScript 与 DOM ID 检查通过
