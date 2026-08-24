@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 14.21;
+const APP_VERSION = 14.3;
 
 const state = loadState();
 let activeFilter = "all";
@@ -188,6 +188,8 @@ const els = {
   toggleArchiveBtn: document.getElementById("toggleArchiveBtn"),
   currentProjectCount: document.getElementById("currentProjectCount"),
   addProjectBtn: document.getElementById("addProjectBtn"),
+  projectViewFlatBtn: document.getElementById("projectViewFlatBtn"),
+  projectViewTreeBtn: document.getElementById("projectViewTreeBtn"),
 
   backToProjectsBtn: document.getElementById("backToProjectsBtn"),
   detailDashboardBtn: document.getElementById("detailDashboardBtn"),
@@ -204,6 +206,13 @@ const els = {
   renameProjectCloseBtn: document.getElementById("renameProjectCloseBtn"),
   renameProjectCancelBtn: document.getElementById("renameProjectCancelBtn"),
   detailProjectDesc: document.getElementById("detailProjectDesc"),
+  detailParentProject: document.getElementById("detailParentProject"),
+  saveParentProjectBtn: document.getElementById("saveParentProjectBtn"),
+  detailChildProjects: document.getElementById("detailChildProjects"),
+  detailRelatedProject: document.getElementById("detailRelatedProject"),
+  detailRelationType: document.getElementById("detailRelationType"),
+  addProjectRelationBtn: document.getElementById("addProjectRelationBtn"),
+  detailRelatedProjects: document.getElementById("detailRelatedProjects"),
   detailProgressNumber: document.getElementById("detailProgressNumber"),
   detailProgressBar: document.getElementById("detailProgressBar"),
   detailProgressMeta: document.getElementById("detailProgressMeta"),
@@ -214,6 +223,7 @@ const els = {
   projectDialog: document.getElementById("projectDialog"),
   projectForm: document.getElementById("projectForm"),
   projectName: document.getElementById("projectName"),
+  projectParent: document.getElementById("projectParent"),
   projectDesc: document.getElementById("projectDesc"),
   projectStatus: document.getElementById("projectStatus"),
   closeProjectDialogBtn: document.getElementById("closeProjectDialogBtn"),
@@ -833,6 +843,10 @@ function bindEvents(){
   });
 
   els.addProjectBtn.addEventListener("click", openProjectDialog);
+  if(els.projectViewFlatBtn) els.projectViewFlatBtn.addEventListener("click",()=>{projectViewMode="flat";renderProjects();});
+  if(els.projectViewTreeBtn) els.projectViewTreeBtn.addEventListener("click",()=>{projectViewMode="tree";renderProjects();});
+  if(els.saveParentProjectBtn) els.saveParentProjectBtn.addEventListener("click",saveCurrentProjectParent);
+  if(els.addProjectRelationBtn) els.addProjectRelationBtn.addEventListener("click",addCurrentProjectRelation);
   els.closeProjectDialogBtn.addEventListener("click", closeProjectDialog);
   els.cancelProjectBtn.addEventListener("click", closeProjectDialog);
 
@@ -882,6 +896,8 @@ function bindEvents(){
       name,
       description:els.projectDesc.value.trim(),
       status:els.projectStatus.value,
+      parentProjectId:els.projectParent?.value||null,
+      relations:[],
       createdAt:new Date().toISOString(),
       archivedAt:null,
       summary:""
@@ -3179,6 +3195,92 @@ function renderAll(){
 
 
 
+
+let projectViewMode="flat";
+function normalizeProjectStructure(){
+  state.projects.forEach(p=>{
+    if(!("parentProjectId" in p)) p.parentProjectId=null;
+    if(!Array.isArray(p.relations)) p.relations=[];
+  });
+}
+function projectChildren(id){return state.projects.filter(p=>p.parentProjectId===id);}
+function projectDepth(id){
+  let depth=0, seen=new Set(), p=state.projects.find(x=>x.id===id);
+  while(p?.parentProjectId && depth<10){
+    if(seen.has(p.parentProjectId)) break;
+    seen.add(p.parentProjectId);depth++;
+    p=state.projects.find(x=>x.id===p.parentProjectId);
+  }
+  return depth;
+}
+function projectDescendantIds(id){
+  const out=new Set();
+  const walk=pid=>projectChildren(pid).forEach(c=>{if(!out.has(c.id)){out.add(c.id);walk(c.id);}});
+  walk(id);return out;
+}
+function projectTreeCardHtml(p,isArchived,depth=0){
+  const children=projectChildren(p.id).filter(c=>(c.status==="archived")===isArchived);
+  return `<div class="project-tree-node" style="--project-depth:${depth}">
+    ${projectCardHtml(p,isArchived)}
+    ${children.length?`<div class="project-tree-children">${children.map(c=>projectTreeCardHtml(c,isArchived,depth+1)).join("")}</div>`:""}
+  </div>`;
+}
+function relationTypeLabel(type){
+  return ({related:"相关",method:"方法来源",extension:"延伸",prerequisite:"前置"})[type]||"相关";
+}
+function saveCurrentProjectParent(){
+  const p=state.projects.find(x=>x.id===currentProjectId);
+  if(!p || !els.detailParentProject) return;
+  const parentId=els.detailParentProject.value||null;
+  if(parentId===p.id){toast("项目不能成为自己的子项目");return;}
+  if(parentId && projectDescendantIds(p.id).has(parentId)){toast("不能移动到自己的子项目下面");renderProjectStructure(p);return;}
+  if(parentId && projectDepth(parentId)>=2){toast("当前版本最多支持三层项目结构");renderProjectStructure(p);return;}
+  p.parentProjectId=parentId;
+  saveState();renderAll();renderProjectDetail();
+  toast(parentId?"项目已移动为子项目":"项目已移动到顶层");
+}
+function addCurrentProjectRelation(){
+  const p=state.projects.find(x=>x.id===currentProjectId);
+  const targetId=els.detailRelatedProject?.value;
+  if(!p||!targetId||targetId===p.id) return;
+  p.relations=p.relations||[];
+  const type=els.detailRelationType?.value||"related";
+  if(p.relations.some(r=>r.projectId===targetId&&r.type===type)){toast("这个项目关联已经存在");return;}
+  p.relations.push({id:uid("project-relation"),projectId:targetId,type,createdAt:new Date().toISOString()});
+  saveState();renderProjectStructure(p);toast("项目关联已添加");
+}
+function removeProjectRelation(relationId){
+  const p=state.projects.find(x=>x.id===currentProjectId);if(!p)return;
+  p.relations=(p.relations||[]).filter(r=>r.id!==relationId);
+  saveState();renderProjectStructure(p);
+}
+function renderProjectStructure(p){
+  if(!p||!els.detailParentProject)return;
+  normalizeProjectStructure();
+  const descendants=projectDescendantIds(p.id);
+  const candidates=state.projects.filter(x=>x.id!==p.id&&!descendants.has(x.id)&&x.status!=="archived");
+  els.detailParentProject.innerHTML=`<option value="">无（顶层项目）</option>`+
+    candidates.map(x=>`<option value="${escapeAttr(x.id)}">${escapeHtml(x.name)}</option>`).join("");
+  els.detailParentProject.value=p.parentProjectId||"";
+
+  const children=projectChildren(p.id);
+  els.detailChildProjects.innerHTML=children.length?children.map(c=>
+    `<button class="project-chip" type="button" onclick="openProjectDetail('${escapeAttr(c.id)}')">${escapeHtml(c.name)}</button>`
+  ).join(""):`<span class="structure-empty">暂无子项目</span>`;
+
+  const relatedIds=new Set((p.relations||[]).map(r=>r.projectId));
+  const relatedCandidates=state.projects.filter(x=>x.id!==p.id&&!relatedIds.has(x.id));
+  els.detailRelatedProject.innerHTML=`<option value="">选择项目…</option>`+
+    relatedCandidates.map(x=>`<option value="${escapeAttr(x.id)}">${escapeHtml(x.name)}</option>`).join("");
+
+  const valid=(p.relations||[]).map(r=>({r,target:state.projects.find(x=>x.id===r.projectId)})).filter(x=>x.target);
+  els.detailRelatedProjects.innerHTML=valid.length?valid.map(({r,target})=>
+    `<div class="project-relation-row"><span class="relation-type">${relationTypeLabel(r.type)}</span>
+      <button type="button" class="relation-title-btn" onclick="openProjectDetail('${escapeAttr(target.id)}')">${escapeHtml(target.name)}</button>
+      <button type="button" class="row-icon-btn" onclick="removeProjectRelation('${escapeAttr(r.id)}')" title="移除关联">×</button></div>`
+  ).join(""):`<span class="structure-empty">暂无相关项目</span>`;
+}
+
 function renderProjects(){
   const current=state.projects
     .filter(p=>p.status!=="archived")
@@ -3190,13 +3292,20 @@ function renderProjects(){
     .filter(p=>p.status==="archived")
     .sort((a,b)=>(b.archivedAt||"").localeCompare(a.archivedAt||""));
 
+  normalizeProjectStructure();
   els.currentProjectCount.textContent=current.length;
+  const currentRoots=current.filter(p=>!p.parentProjectId || !current.some(x=>x.id===p.parentProjectId));
+  const archivedRoots=archived.filter(p=>!p.parentProjectId || !archived.some(x=>x.id===p.parentProjectId));
+  els.projectGrid.classList.toggle("tree-mode",projectViewMode==="tree");
+  els.archiveGrid.classList.toggle("tree-mode",projectViewMode==="tree");
   els.projectGrid.innerHTML=current.length
-    ? current.map(p=>projectCardHtml(p,false)).join("")
+    ? (projectViewMode==="tree"?currentRoots.map(p=>projectTreeCardHtml(p,false,0)).join(""):current.map(p=>projectCardHtml(p,false)).join(""))
     : `<div class="panel empty">当前没有科研项目。新建项目，或者从下方归档区恢复一个项目。</div>`;
   els.archiveGrid.innerHTML=archived.length
-    ? archived.map(p=>projectCardHtml(p,true)).join("")
+    ? (projectViewMode==="tree"?archivedRoots.map(p=>projectTreeCardHtml(p,true,0)).join(""):archived.map(p=>projectCardHtml(p,true)).join(""))
     : `<div class="panel empty">还没有归档项目。项目完成后可以归档，所有任务和科研日志都会保留。</div>`;
+  if(els.projectViewFlatBtn) els.projectViewFlatBtn.classList.toggle("active",projectViewMode==="flat");
+  if(els.projectViewTreeBtn) els.projectViewTreeBtn.classList.toggle("active",projectViewMode==="tree");
 }
 
 function projectCardHtml(p,isArchived){
@@ -3218,6 +3327,7 @@ function projectCardHtml(p,isArchived){
         </div>
       </div>
       <h3>${escapeHtml(p.name)}</h3>
+      ${p.parentProjectId?`<div class="project-parent-meta">↳ ${escapeHtml(projectName(p.parentProjectId))}</div>`:""}
       <p>${escapeHtml(p.description||"暂无说明。")}</p>
       <div class="project-progress" title="任务完成率 ${progress}%"><span style="width:${progress}%"></span></div>
       <div class="project-bottom"><span>${open} 待办 · ${done} 完成</span><span>${logs} 篇日志 · ${progress}%</span></div>
@@ -3362,6 +3472,12 @@ function closeTaskDialog(){
 
 function openProjectDialog(){
   els.projectForm.reset();
+  normalizeProjectStructure();
+  if(els.projectParent){
+    const candidates=state.projects.filter(p=>p.status!=="archived"&&projectDepth(p.id)<2);
+    els.projectParent.innerHTML=`<option value="">无（作为顶层项目）</option>`+
+      candidates.map(p=>`<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join("");
+  }
   els.projectDialog.showModal();
   setTimeout(()=>els.projectName.focus(),50);
 }
@@ -4024,6 +4140,7 @@ function renderProjectDetail(){
   els.detailArchiveBtn.hidden=p.status==="archived";
   els.detailRestoreBtn.hidden=p.status!=="archived";
   els.projectSummaryInput.value=p.summary||"";
+  renderProjectStructure(p);
 
   els.detailTaskList.innerHTML=tasks.length?tasks.map(t=>`
     <div class="task-item ${t.done?"detail-task-done":""}">
@@ -4069,6 +4186,7 @@ function deleteProject(id){
     _linkedLogIds:linkedLogs.map(l=>l.id)
   },project.name);
 
+  state.projects.forEach(child=>{if(child.parentProjectId===id) child.parentProjectId=null;});
   state.projects=state.projects.filter(x=>x.id!==id);
   state.tasks.forEach(t=>{if(t.projectId===id)t.projectId=null;});
   state.logs.forEach(l=>{if(l.projectId===id)l.projectId=null;});

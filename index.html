@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=14.2.1" />
+  <link rel="stylesheet" href="style.css?v=14.3.0" />
 </head>
 <body class="is-today-view">
 
@@ -492,7 +492,13 @@
             <div class="panel-kicker">科研项目</div>
             <p>项目对应一条真实研究主线。完成后归档，任务、科研日志和项目总结都会永久保留。</p>
           </div>
-          <button id="addProjectBtn" class="primary-btn" type="button">+ 新建项目</button>
+          <div class="project-view-actions">
+            <div class="segmented compact-segmented" aria-label="项目视图">
+              <button id="projectViewFlatBtn" class="active" type="button">平铺</button>
+              <button id="projectViewTreeBtn" type="button">层级</button>
+            </div>
+            <button id="addProjectBtn" class="primary-btn" type="button">+ 新建项目</button>
+          </div>
         </div>
 
         <div class="project-section-head">
@@ -550,6 +556,40 @@
             <div class="detail-progress-meta" id="detailProgressMeta">0 完成 · 0 待办</div>
           </div>
         </div>
+
+        <article class="panel project-structure-panel">
+          <div class="panel-head">
+            <div><div class="panel-kicker">PROJECT STRUCTURE</div><h2>项目结构</h2></div>
+          </div>
+          <div class="project-structure-grid">
+            <div class="project-structure-block">
+              <div class="structure-label">上级项目</div>
+              <div class="structure-inline">
+                <select id="detailParentProject"></select>
+                <button id="saveParentProjectBtn" class="ghost-btn compact-btn" type="button">移动</button>
+              </div>
+              <div class="structure-help">可把现有项目移动到另一个项目下，成为它的子项目。</div>
+            </div>
+            <div class="project-structure-block">
+              <div class="structure-label">子项目</div>
+              <div id="detailChildProjects" class="project-chip-list"></div>
+            </div>
+            <div class="project-structure-block project-related-block">
+              <div class="structure-label">相关项目</div>
+              <div class="structure-inline">
+                <select id="detailRelatedProject"></select>
+                <select id="detailRelationType">
+                  <option value="related">相关项目</option>
+                  <option value="method">方法来源</option>
+                  <option value="extension">延伸项目</option>
+                  <option value="prerequisite">前置项目</option>
+                </select>
+                <button id="addProjectRelationBtn" class="ghost-btn compact-btn" type="button">关联</button>
+              </div>
+              <div id="detailRelatedProjects" class="project-relation-list"></div>
+            </div>
+          </div>
+        </article>
 
         <div class="detail-grid">
           <article class="panel">
@@ -1106,6 +1146,13 @@
       </label>
 
       <label>
+        上级项目
+        <select id="projectParent">
+          <option value="">无（作为顶层项目）</option>
+        </select>
+      </label>
+
+      <label>
         状态
         <select id="projectStatus">
           <option value="active">进行中</option>
@@ -1165,11 +1212,11 @@
   </dialog>
 
 
-<script src="config.js?v=14.2.1"></script>
+<script src="config.js?v=14.3.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=14.2.1"></script>
+  <script src="app.js?v=14.3.0"></script>
 </div></body>
 </html>

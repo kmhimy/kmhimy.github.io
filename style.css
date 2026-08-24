@@ -2861,3 +2861,26 @@ button{touch-action:manipulation}
 .project-rename-btn{flex:0 0 auto;margin-top:6px;border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;padding:5px 7px;border-radius:6px}
 .project-rename-btn:hover{background:#eef1f2;color:var(--text)}
 .project-rename-dialog{width:min(520px,calc(100vw - 32px))}
+
+/* V14.3 — Project hierarchy & relations */
+.project-view-actions{display:flex;align-items:center;gap:10px}
+.compact-segmented{display:flex;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.compact-segmented button{border:0;background:transparent;padding:7px 10px;border-radius:7px;cursor:pointer;color:var(--muted)}
+.compact-segmented button.active{background:var(--ink);color:#fff}
+.project-grid.tree-mode{display:block}
+.project-tree-node{position:relative;margin-left:calc(var(--project-depth) * 28px);margin-bottom:14px}
+.project-tree-node>.project-card{margin-bottom:10px}
+.project-tree-children{border-left:1px solid var(--line);padding-left:14px}
+.project-parent-meta{font-size:12px;color:var(--muted);margin:-4px 0 8px}
+.project-structure-panel{margin-bottom:20px}
+.project-structure-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.project-related-block{grid-column:1/-1}
+.structure-label{font-weight:700;margin-bottom:8px}
+.structure-inline{display:flex;gap:8px;align-items:center}
+.structure-inline select{min-width:0;flex:1}
+.structure-help,.structure-empty{font-size:12px;color:var(--muted);margin-top:7px}
+.project-chip-list{display:flex;gap:7px;flex-wrap:wrap}
+.project-chip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:7px 11px;cursor:pointer}
+.project-relation-list{margin-top:10px;display:grid;gap:6px}
+.project-relation-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+@media(max-width:760px){.project-structure-grid{grid-template-columns:1fr}.project-related-block{grid-column:auto}.structure-inline{flex-wrap:wrap}.structure-inline select{flex:1 1 180px}}
