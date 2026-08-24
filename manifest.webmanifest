@@ -1,6 +1,6 @@
 {
-  "name": "Research Desk",
-  "short_name": "Research Desk",
+  "name": "科研工作台",
+  "short_name": "科研工作台",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f5f6f8",
