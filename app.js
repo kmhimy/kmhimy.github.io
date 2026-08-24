@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 14.2;
+const APP_VERSION = 14.21;
 
 const state = loadState();
 let activeFilter = "all";
@@ -1884,11 +1884,52 @@ function renderTodayProgress(){
           <div class="today-done-time">${escapeHtml(e.type)} · ${escapeHtml(formatDateTime(e.date))}</div>
         </div>
         <button class="today-progress-remove" type="button"
-          onclick="hideTodayProgressItem('${escapeAttr(e.id)}')"
-          title="从今天推进记录中移除">×</button>
+          onclick="trashTodayProgressItem('${escapeAttr(e.id)}')"
+          title="${e.type==="Work Log"?"把这条 Work Log 移到回收站":"把这个任务移到回收站"}">×</button>
       </div>
     `).join("")
     :`<div class="empty">今天还没有保留的推进记录。完成任务或写下 Work Log 后会出现在这里。</div>`;
+}
+
+
+function trashTodayProgressItem(eventId){
+  const parts=String(eventId||"").split(":");
+  const type=parts[0];
+
+  if(type==="completed-task"){
+    const taskId=parts.slice(1).join(":");
+    const task=state.tasks.find(t=>t.id===taskId);
+    if(!task) return;
+    if(!confirm(`把任务“${task.title}”移到回收站？任务笔记、Work Log 和关联信息会一起保留在回收站中。`)) return;
+    moveToTrash("task",task,task.title);
+    state.tasks=state.tasks.filter(t=>t.id!==taskId);
+
+    // Remove stale Today Top-3 references on all dates.
+    Object.values(state.daily||{}).forEach(d=>{
+      if(Array.isArray(d.top3)) d.top3=d.top3.filter(id=>id!==taskId);
+    });
+
+    saveState();
+    renderAll();
+    toast("任务已移到回收站");
+    return;
+  }
+
+  if(type==="worklog"){
+    // IDs are generated without ":"; split form is worklog:taskId:logId.
+    const taskId=parts[1];
+    const logId=parts.slice(2).join(":");
+    const task=state.tasks.find(t=>t.id===taskId);
+    const log=task?.workLogs?.find(l=>l.id===logId);
+    if(!task || !log) return;
+    if(!confirm(`把“${task.title}”的这条 Work Log 移到回收站？`)) return;
+
+    moveToTrash("worklog",{...log,taskId:task.id},`${task.title} · 工作记录`);
+    task.workLogs=task.workLogs.filter(l=>l.id!==logId);
+    saveState();
+    renderAll();
+    toast("Work Log 已移到回收站");
+  }
 }
 
 function hideTodayProgressItem(eventId){
@@ -1907,7 +1948,7 @@ function restoreAllTodayProgress(){
   daily.hiddenProgress=[];
   saveState();
   renderTodayProgress();
-  toast("已恢复今天的全部推进记录");
+  toast("已恢复此前隐藏的推进记录");
 }
 
 function saveTodayDailyNote(){
