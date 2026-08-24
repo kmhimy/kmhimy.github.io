@@ -1528,3 +1528,256 @@ body[data-density="compact"] .note-panel{margin-top:14px}
   .appearance-intro{align-items:flex-start;flex-direction:column}
   .appearance-options{grid-template-columns:1fr}
 }
+
+
+/* ==========================================================================
+   V9 — global search / daily research progress / note templates
+   ========================================================================== */
+
+/* ---------- Search trigger ---------- */
+.search-trigger-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+}
+.search-trigger-btn kbd,
+.search-dialog kbd{
+  padding:2px 5px;
+  border:1px solid #d9dee3;
+  border-bottom-width:2px;
+  border-radius:5px;
+  background:#f7f8f9;
+  color:#828b94;
+  font-family:inherit;
+  font-size:8px;
+}
+
+/* ---------- Search dialog ---------- */
+.search-dialog{
+  width:min(760px,calc(100% - 28px));
+  max-height:min(78vh,760px);
+  padding:0;
+  border:0;
+  border-radius:17px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 34px 100px rgba(12,17,23,.27);
+}
+.search-dialog::backdrop{
+  background:rgba(12,17,23,.48);
+  backdrop-filter:blur(5px);
+}
+.search-dialog-card{
+  display:flex;
+  flex-direction:column;
+  max-height:min(78vh,760px);
+}
+.search-input-wrap{
+  display:grid;
+  grid-template-columns:24px 1fr auto;
+  align-items:center;
+  gap:8px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+}
+.search-icon{
+  color:#77818a;
+  font-size:20px;
+  line-height:1;
+}
+.search-input-wrap input{
+  width:100%;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:var(--text);
+  font-size:15px;
+}
+.search-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  padding:9px 18px;
+  border-bottom:1px solid var(--line);
+  background:#fafbfc;
+  color:#929aa3;
+  font-size:9px;
+}
+.search-results{
+  min-height:160px;
+  overflow:auto;
+  padding:8px;
+}
+.search-empty{
+  padding:36px 20px;
+  color:#9aa2aa;
+  font-size:11px;
+  text-align:center;
+}
+.search-result{
+  width:100%;
+  display:grid;
+  grid-template-columns:86px minmax(0,1fr);
+  gap:12px;
+  padding:11px 12px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+}
+.search-result:hover,
+.search-result.active{
+  background:#f0f3f5;
+}
+.search-result-type{
+  color:var(--accent);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.05em;
+}
+.search-result-title{
+  font-size:12px;
+  font-weight:650;
+  line-height:1.45;
+}
+.search-result-context{
+  margin-top:3px;
+  color:#89929b;
+  font-size:9px;
+}
+.search-result-excerpt{
+  margin-top:5px;
+  color:#6f7881;
+  font-size:10px;
+  line-height:1.55;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+.search-highlight{
+  background:#fff0a8;
+  color:inherit;
+  border-radius:2px;
+  padding:0 1px;
+}
+.search-footer{
+  display:flex;
+  gap:18px;
+  padding:9px 18px;
+  border-top:1px solid var(--line);
+  background:#fafbfc;
+  color:#9aa2aa;
+  font-size:8px;
+}
+.search-footer span{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+/* ---------- Today's work logs ---------- */
+.today-progress-panel{
+  margin-top:20px;
+}
+.panel-subtext{
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.55;
+}
+.today-progress-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:18px;
+}
+.today-progress-item{
+  display:grid;
+  grid-template-columns:62px minmax(0,1fr) auto;
+  gap:13px;
+  align-items:flex-start;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+.today-progress-item:last-child{border-bottom:0}
+.today-progress-time{
+  color:#8d969f;
+  font-size:10px;
+  font-variant-numeric:tabular-nums;
+}
+.today-progress-task{
+  border:0;
+  padding:0;
+  background:transparent;
+  color:var(--text);
+  font-size:12px;
+  font-weight:650;
+  text-align:left;
+}
+.today-progress-task:hover{color:var(--accent)}
+.today-progress-project{
+  margin-top:3px;
+  color:var(--accent);
+  font-size:9px;
+}
+.today-progress-excerpt{
+  margin-top:6px;
+  color:#68727b;
+  font-size:10px;
+  line-height:1.6;
+}
+.today-progress-open{
+  border:0;
+  background:transparent;
+  color:#a0a8b0;
+  padding:1px 3px;
+  font-size:16px;
+}
+.today-progress-open:hover{color:var(--accent)}
+
+/* ---------- Templates ---------- */
+.field-help{
+  margin-top:1px;
+  color:#9aa2aa;
+  font-size:8px;
+  font-weight:400;
+  line-height:1.45;
+}
+.toolbar-template{
+  margin-left:auto;
+}
+.toolbar-template select{
+  height:29px;
+  min-width:112px;
+  padding:0 8px;
+  border:1px solid #dce1e5;
+  border-radius:7px;
+  outline:none;
+  background:#fff;
+  color:#68727c;
+  font-size:9px;
+}
+.toolbar-template select:hover,
+.toolbar-template select:focus{
+  border-color:#b8c3cc;
+}
+.toolbar-template + .toolbar-help{
+  margin-left:0;
+}
+
+/* compact theme tweaks */
+body[data-density="compact"] .today-progress-panel{margin-top:14px}
+
+@media(max-width:800px){
+  .search-trigger-btn kbd{display:none}
+  .search-result{grid-template-columns:70px minmax(0,1fr)}
+  .today-progress-item{grid-template-columns:46px minmax(0,1fr)}
+  .today-progress-open{display:none}
+  .toolbar-template{
+    width:100%;
+    margin-left:0;
+  }
+  .toolbar-template select{width:100%}
+}

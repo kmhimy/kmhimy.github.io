@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 
 const state = loadState();
 let activeFilter = "all";
@@ -18,6 +18,8 @@ noteSourcePercent=Math.min(78,Math.max(28,noteSourcePercent));
 let splitDragging=false;
 let calendarCursor=new Date();
 calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
+let searchMatches=[];
+let searchActiveIndex=0;
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -46,6 +48,8 @@ const els = {
 
   taskList: document.getElementById("taskList"),
   doneList: document.getElementById("doneList"),
+  todayWorkLogList: document.getElementById("todayWorkLogList"),
+  todayWorkLogCount: document.getElementById("todayWorkLogCount"),
   doneCount: document.getElementById("doneCount"),
   openCount: document.getElementById("openCount"),
   projectCount: document.getElementById("projectCount"),
@@ -62,6 +66,7 @@ const els = {
   taskCategory: document.getElementById("taskCategory"),
   taskProject: document.getElementById("taskProject"),
   taskDue: document.getElementById("taskDue"),
+  taskTemplate: document.getElementById("taskTemplate"),
   taskPriorityToday: document.getElementById("taskPriorityToday"),
   closeTaskDialogBtn: document.getElementById("closeTaskDialogBtn"),
   cancelTaskBtn: document.getElementById("cancelTaskBtn"),
@@ -82,6 +87,7 @@ const els = {
   noteModeSource: document.getElementById("noteModeSource"),
   noteModePreview: document.getElementById("noteModePreview"),
   noteInsertButtons: [...document.querySelectorAll("[data-note-insert]")],
+  taskTemplateApply: document.getElementById("taskTemplateApply"),
   taskWorkLogInput: document.getElementById("taskWorkLogInput"),
   taskWorkLogPreview: document.getElementById("taskWorkLogPreview"),
   saveTaskWorkLogBtn: document.getElementById("saveTaskWorkLogBtn"),
@@ -147,6 +153,13 @@ const els = {
   weekDoneList: document.getElementById("weekDoneList"),
   carryList: document.getElementById("carryList"),
   copyReviewBtn: document.getElementById("copyReviewBtn"),
+
+  globalSearchBtn: document.getElementById("globalSearchBtn"),
+  searchDialog: document.getElementById("searchDialog"),
+  globalSearchInput: document.getElementById("globalSearchInput"),
+  searchResults: document.getElementById("searchResults"),
+  searchHint: document.getElementById("searchHint"),
+  searchResultCount: document.getElementById("searchResultCount"),
 
   exportBtn: document.getElementById("exportBtn"),
   importInput: document.getElementById("importInput"),
@@ -385,6 +398,13 @@ function cleanupOldOfflineCache(){
 function bindEvents(){
   els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
 
+  els.globalSearchBtn.addEventListener("click",openGlobalSearch);
+  els.globalSearchInput.addEventListener("input",()=>runGlobalSearch(els.globalSearchInput.value));
+  els.globalSearchInput.addEventListener("keydown",handleSearchKeydown);
+  els.searchDialog.addEventListener("click",e=>{
+    if(e.target===els.searchDialog) closeGlobalSearch();
+  });
+
   els.sidebarCollapseBtn.addEventListener("click",toggleSidebarCollapse);
 
   els.noteSplitHandle.addEventListener("pointerdown",startNoteSplitDrag);
@@ -436,6 +456,18 @@ function bindEvents(){
   });
 
   document.addEventListener("keydown", e=>{
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k"){
+      e.preventDefault();
+      if(els.searchDialog.open) closeGlobalSearch();
+      else openGlobalSearch();
+      return;
+    }
+
+    if(e.key==="Escape" && els.searchDialog.open){
+      closeGlobalSearch();
+      return;
+    }
+
     if(e.key==="Escape" && document.body.classList.contains("focus-mode")){
       exitFocusMode();
       return;
@@ -511,7 +543,7 @@ function bindEvents(){
       done:false,
       completedAt:null,
       priorityDate:makePriority ? localDateKey() : null,
-      detailsMarkdown:"",
+      detailsMarkdown:getTaskTemplateContent(els.taskTemplate.value),
       workLogs:[]
     });
 
@@ -538,6 +570,7 @@ function bindEvents(){
   });
 
   els.backFromTaskBtn.addEventListener("click", ()=>{
+    if(currentTaskId) saveTaskDetailsNow();
     currentTaskId=null;
     switchView(taskDetailReturnView || "today");
   });
@@ -572,6 +605,12 @@ function bindEvents(){
 
   els.noteInsertButtons.forEach(btn=>{
     btn.addEventListener("click",()=>insertResearchNoteSyntax(btn.dataset.noteInsert));
+  });
+
+  els.taskTemplateApply.addEventListener("change",()=>{
+    const template=els.taskTemplateApply.value;
+    if(template) applyTemplateToCurrentTask(template);
+    els.taskTemplateApply.value="";
   });
 
   els.taskDetailsInput.addEventListener("keydown",e=>{
@@ -1418,6 +1457,561 @@ function resetAppearanceSettings(){
   toast("已恢复默认外观");
 }
 
+
+// ============================================================================
+// V9 — Today's work-log summary
+// ============================================================================
+
+function todayTaskWorkLogs(){
+  const today=localDateKey();
+  const items=[];
+
+  state.tasks.forEach(task=>{
+    (task.workLogs||[]).forEach(log=>{
+      if(log.createdAt && localDateKey(new Date(log.createdAt))===today){
+        items.push({task,log});
+      }
+    });
+  });
+
+  return items.sort((a,b)=>(b.log.createdAt||"").localeCompare(a.log.createdAt||""));
+}
+
+function renderTodayWorkLogs(){
+  if(!els.todayWorkLogList) return;
+
+  const items=todayTaskWorkLogs();
+  els.todayWorkLogCount.textContent=items.length;
+
+  if(!items.length){
+    els.todayWorkLogList.innerHTML=`<div class="empty">今天还没有任务工作记录。即使一个任务尚未完成，也建议把实际推进写进任务详情里的“工作记录”。</div>`;
+    return;
+  }
+
+  els.todayWorkLogList.innerHTML=items.map(({task,log})=>`
+    <div class="today-progress-item">
+      <div class="today-progress-time">${formatTimeOnly(log.createdAt)}</div>
+      <div>
+        <button class="today-progress-task" type="button"
+          onclick="openTaskWorkLogFromSearch('${task.id}','${log.id}','today')">${escapeHtml(task.title)}</button>
+        <div class="today-progress-project">${task.projectId?escapeHtml(projectName(task.projectId)):"未归属项目"}</div>
+        <div class="today-progress-excerpt">${escapeHtml(makePlainExcerpt(log.content,220))}</div>
+      </div>
+      <button class="today-progress-open" type="button"
+        onclick="openTaskWorkLogFromSearch('${task.id}','${log.id}','today')" title="打开工作记录">›</button>
+    </div>
+  `).join("");
+}
+
+function formatTimeOnly(iso){
+  if(!iso) return "";
+  return new Intl.DateTimeFormat("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(iso));
+}
+
+// ============================================================================
+// V9 — Research-note templates
+// ============================================================================
+
+function getTaskTemplateContent(template){
+  switch(template){
+    case "theory":
+      return String.raw`# 研究目标
+
+这个任务要解决的核心理论问题是什么？
+
+## 模型与假设
+
+- 系统：
+- 参数区间：
+- 近似与假设：
+
+## 推导
+
+\[
+H =
+\]
+
+### 关键步骤
+
+1. 
+2. 
+3. 
+
+## 一致性检查
+
+- 极限情况：
+- 量纲：
+- 与已有结果比较：
+
+## 当前结论
+
+- 
+
+## 未解决问题
+
+- 
+
+## 下一步
+
+- `;
+
+    case "numerical":
+      return String.raw`# 数值目标
+
+需要用数值计算验证什么？
+
+## 模型与参数
+
+- 模型：
+- 参数：
+- 初态：
+- 时间范围 / 扫描范围：
+
+## 数值方法
+
+- 程序：
+- 求解器：
+- 截断：
+- 收敛性检查：
+
+## 结果
+
+### Figure / 数据
+
+- 
+
+## 与解析结果比较
+
+\[
+\text{numerics} \quad \text{vs.} \quad \text{analytics}
+\]
+
+## 异常与排查
+
+- 
+
+## 下一步
+
+- `;
+
+    case "paper":
+      return String.raw`# 修改目标
+
+这一处为什么要修改？
+
+## 原文 / 原结构
+
+> 
+
+## 修改后
+
+> 
+
+## 修改原因
+
+- 物理表述：
+- 数学严谨性：
+- 篇幅：
+- 与全文符号统一：
+
+## 待确认
+
+- 
+
+## 下一步
+
+- `;
+
+    case "literature":
+      return String.raw`# 文献信息
+
+- 题目：
+- 作者：
+- 期刊 / arXiv：
+- DOI：
+- 阅读日期：
+
+## 这篇文章解决什么问题？
+
+## 核心模型
+
+\[
+H =
+\]
+
+## 关键方法
+
+- 
+
+## 主要结论
+
+- 
+
+## 对当前项目的启发
+
+- 
+
+## 与我们的区别
+
+- 
+
+## 值得引用的位置
+
+- `;
+
+    case "figure":
+      return String.raw`# Figure 目标
+
+这张图要回答什么物理问题？
+
+## 数据 / 参数
+
+- 横轴：
+- 纵轴：
+- 固定参数：
+- 扫描参数：
+
+## 作图方案
+
+- panel (a)：
+- panel (b)：
+- panel (c)：
+
+## 需要突出
+
+- 
+
+## 检查
+
+- 量纲
+- 图例
+- 字号
+- 线宽
+- 颜色
+- caption 与正文一致
+
+## 下一步
+
+- `;
+
+    case "referee":
+      return String.raw`# Referee Comment
+
+> 审稿意见粘贴在这里。
+
+## 审稿人的核心关切
+
+- 
+
+## 我们的判断
+
+- 是否成立：
+- 是否需要补充计算 / 推导：
+- 是否需要修改正文：
+
+## Response
+
+> We thank the referee for ...
+
+## Manuscript change
+
+原文：
+
+> 
+
+修改后：
+
+> 
+
+## 待检查
+
+- 页码 / 行号
+- Figure / Equation 引用
+- Supplement 对应修改
+`;
+
+    case "blank":
+    default:
+      return "";
+  }
+}
+
+function applyTemplateToCurrentTask(template){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+
+  const content=getTaskTemplateContent(template);
+  if(!content) return;
+
+  if(els.taskDetailsInput.value.trim()){
+    const ok=confirm("当前科研笔记已有内容。套用模板会替换现有笔记，确定继续吗？");
+    if(!ok) return;
+  }
+
+  els.taskDetailsInput.value=content;
+  renderMarkdownInto(content,els.taskDetailsPreview);
+  saveTaskDetailsNow();
+  toast("科研笔记模板已套用");
+}
+
+// ============================================================================
+// V9 — Global search
+// ============================================================================
+
+function openGlobalSearch(){
+  if(currentTaskId){
+    saveTaskDetailsNow();
+  }
+
+  if(!els.searchDialog.open){
+    els.searchDialog.showModal();
+  }
+
+  els.globalSearchInput.value="";
+  searchMatches=[];
+  searchActiveIndex=0;
+  renderSearchResults();
+  setTimeout(()=>els.globalSearchInput.focus(),30);
+}
+
+function closeGlobalSearch(){
+  if(els.searchDialog.open) els.searchDialog.close();
+}
+
+function runGlobalSearch(rawQuery){
+  const query=String(rawQuery||"").trim();
+  if(!query){
+    searchMatches=[];
+    searchActiveIndex=0;
+    renderSearchResults();
+    return;
+  }
+
+  const q=query.toLocaleLowerCase();
+  const matches=[];
+
+  state.projects.forEach(project=>{
+    const hay=[project.name,project.description,project.summary].filter(Boolean).join("\n");
+    if(searchTextMatches(hay,q)){
+      matches.push({
+        type:"project",
+        label:project.status==="archived"?"已归档项目":"科研项目",
+        title:project.name,
+        context:labelStatus(project.status),
+        excerpt:bestSearchExcerpt(hay,q),
+        projectId:project.id,
+        score:searchScore(project.name,hay,q)
+      });
+    }
+  });
+
+  state.tasks.forEach(task=>{
+    const hay=[task.title,task.detailsMarkdown].filter(Boolean).join("\n");
+    if(searchTextMatches(hay,q)){
+      matches.push({
+        type:"task",
+        label:"任务 / 科研笔记",
+        title:task.title,
+        context:task.projectId?projectName(task.projectId):"未归属项目",
+        excerpt:bestSearchExcerpt(hay,q),
+        taskId:task.id,
+        score:searchScore(task.title,hay,q)
+      });
+    }
+
+    (task.workLogs||[]).forEach(log=>{
+      if(searchTextMatches(log.content,q)){
+        matches.push({
+          type:"worklog",
+          label:"工作记录",
+          title:task.title,
+          context:`${task.projectId?projectName(task.projectId):"未归属项目"} · ${formatDateTime(log.createdAt)}`,
+          excerpt:bestSearchExcerpt(log.content,q),
+          taskId:task.id,
+          workLogId:log.id,
+          score:90 + searchScore("",log.content,q)
+        });
+      }
+    });
+  });
+
+  state.logs.forEach(log=>{
+    const hay=[log.topic,log.progress,log.finding,log.next].filter(Boolean).join("\n");
+    if(searchTextMatches(hay,q)){
+      matches.push({
+        type:"research-log",
+        label:"科研日志",
+        title:log.topic,
+        context:log.projectId?projectName(log.projectId):"未归属项目",
+        excerpt:bestSearchExcerpt(hay,q),
+        logId:log.id,
+        score:80 + searchScore(log.topic,hay,q)
+      });
+    }
+  });
+
+  searchMatches=matches
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,60);
+
+  searchActiveIndex=0;
+  renderSearchResults(query);
+}
+
+function searchTextMatches(text,q){
+  return String(text||"").toLocaleLowerCase().includes(q);
+}
+
+function searchScore(title,text,q){
+  const t=String(title||"").toLocaleLowerCase();
+  const full=String(text||"").toLocaleLowerCase();
+  let score=0;
+  if(t===q) score+=300;
+  else if(t.startsWith(q)) score+=220;
+  else if(t.includes(q)) score+=160;
+
+  const first=full.indexOf(q);
+  if(first>=0) score+=Math.max(0,80-Math.min(first,80));
+  return score;
+}
+
+function makePlainExcerpt(text,maxLength=180){
+  let value=String(text||"")
+    .replace(/```[\s\S]*?```/g," [代码] ")
+    .replace(/`([^`]+)`/g,"$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g,"")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,"$1")
+    .replace(/^#{1,6}\s+/gm,"")
+    .replace(/[*_>#~-]/g," ")
+    .replace(/\\begin\{[^}]+\}|\\end\{[^}]+\}/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  if(value.length>maxLength) value=value.slice(0,maxLength-1)+"…";
+  return value;
+}
+
+function bestSearchExcerpt(text,q){
+  const plain=makePlainExcerpt(text,10000);
+  const low=plain.toLocaleLowerCase();
+  const idx=low.indexOf(q);
+  if(idx<0) return makePlainExcerpt(plain,190);
+
+  const start=Math.max(0,idx-65);
+  const end=Math.min(plain.length,idx+q.length+105);
+  return `${start>0?"…":""}${plain.slice(start,end)}${end<plain.length?"…":""}`;
+}
+
+function highlightSearchText(text,query){
+  const safe=escapeHtml(text||"");
+  if(!query) return safe;
+
+  const escapedQuery=String(query).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  try{
+    const re=new RegExp(`(${escapedQuery})`,"ig");
+    return safe.replace(re,'<mark class="search-highlight">$1</mark>');
+  }catch{
+    return safe;
+  }
+}
+
+function renderSearchResults(query=""){
+  if(!query){
+    els.searchHint.textContent="输入关键词开始搜索。支持中文、英文和公式关键词。";
+    els.searchResultCount.textContent="";
+    els.searchResults.innerHTML=`
+      <div class="search-empty">
+        可以搜索项目、任务标题、科研笔记、工作记录和科研日志。<br>
+        例如：XY cancellation、rank-two、J_XY、审稿意见。
+      </div>`;
+    return;
+  }
+
+  els.searchHint.textContent=`搜索 “${query}”`;
+  els.searchResultCount.textContent=`${searchMatches.length} 个结果`;
+
+  if(!searchMatches.length){
+    els.searchResults.innerHTML=`<div class="search-empty">没有找到匹配内容。</div>`;
+    return;
+  }
+
+  els.searchResults.innerHTML=searchMatches.map((item,index)=>`
+    <button class="search-result ${index===searchActiveIndex?"active":""}" type="button"
+      data-search-index="${index}" onclick="openSearchResult(${index})">
+      <div class="search-result-type">${escapeHtml(item.label)}</div>
+      <div>
+        <div class="search-result-title">${highlightSearchText(item.title,query)}</div>
+        <div class="search-result-context">${escapeHtml(item.context||"")}</div>
+        <div class="search-result-excerpt">${highlightSearchText(item.excerpt||"",query)}</div>
+      </div>
+    </button>
+  `).join("");
+
+  scrollActiveSearchResultIntoView();
+}
+
+function handleSearchKeydown(e){
+  if(e.key==="ArrowDown"){
+    e.preventDefault();
+    if(searchMatches.length){
+      searchActiveIndex=(searchActiveIndex+1)%searchMatches.length;
+      renderSearchResults(els.globalSearchInput.value.trim());
+    }
+  }else if(e.key==="ArrowUp"){
+    e.preventDefault();
+    if(searchMatches.length){
+      searchActiveIndex=(searchActiveIndex-1+searchMatches.length)%searchMatches.length;
+      renderSearchResults(els.globalSearchInput.value.trim());
+    }
+  }else if(e.key==="Enter"){
+    e.preventDefault();
+    if(searchMatches[searchActiveIndex]) openSearchResult(searchActiveIndex);
+  }else if(e.key==="Escape"){
+    e.preventDefault();
+    closeGlobalSearch();
+  }
+}
+
+function scrollActiveSearchResultIntoView(){
+  requestAnimationFrame(()=>{
+    const active=els.searchResults.querySelector(".search-result.active");
+    active?.scrollIntoView({block:"nearest"});
+  });
+}
+
+function openSearchResult(index){
+  const item=searchMatches[index];
+  if(!item) return;
+
+  closeGlobalSearch();
+
+  if(item.type==="project"){
+    openProjectDetail(item.projectId);
+  }else if(item.type==="task"){
+    openTaskDetail(item.taskId,"today");
+  }else if(item.type==="worklog"){
+    openTaskWorkLogFromSearch(item.taskId,item.workLogId,"today");
+  }else if(item.type==="research-log"){
+    openResearchLogFromSearch(item.logId);
+  }
+}
+
+function openTaskWorkLogFromSearch(taskId,workLogId,returnView="today"){
+  openTaskDetail(taskId,returnView);
+  setTimeout(()=>{
+    const el=document.getElementById(`worklog-card-${escapeAttr(workLogId)}`);
+    el?.scrollIntoView({behavior:"smooth",block:"center"});
+  },90);
+}
+
+function openResearchLogFromSearch(logId){
+  switchView("log");
+  setTimeout(()=>{
+    const el=document.getElementById(`log-entry-${escapeAttr(logId)}`);
+    el?.scrollIntoView({behavior:"smooth",block:"center"});
+  },80);
+}
+
 function todayPriorityTasks(){
   return state.tasks.filter(t=>t.priorityDate===localDateKey());
 }
@@ -1446,6 +2040,7 @@ function renderToday(){
   renderPriorities();
   renderTasks();
   renderDone();
+  renderTodayWorkLogs();
 
   els.doneCount.textContent=todayDoneTasks().length;
   els.openCount.textContent=state.tasks.filter(t=>!t.done).length;
@@ -1617,7 +2212,7 @@ function renderLogs(){
   }
 
   els.logList.innerHTML=state.logs.slice(0,30).map(l=>`
-    <article class="log-entry">
+    <article class="log-entry" id="log-entry-${escapeAttr(l.id)}">
       <div class="log-entry-head">
         <div>
           <div class="log-entry-title">${escapeHtml(l.topic)}</div>
@@ -1721,6 +2316,7 @@ function makeReviewText(){
 function openTaskDialog(){
   renderProjectOptions();
   els.taskForm.reset();
+  els.taskTemplate.value="blank";
   els.taskDialog.showModal();
   setTimeout(()=>els.taskTitle.focus(),50);
 }
@@ -1807,7 +2403,7 @@ function renderTaskWorkLogs(task){
   }
 
   els.taskWorkLogList.innerHTML=logs.map((log,index)=>`
-    <article class="task-worklog-card">
+    <article class="task-worklog-card" id="worklog-card-${escapeAttr(log.id)}">
       <div class="task-worklog-head">
         <div class="task-worklog-date">${formatDateTime(log.createdAt)}</div>
         <div class="task-worklog-index">记录 ${logs.length-index}</div>
@@ -1916,7 +2512,7 @@ function saveCurrentTaskWorkLog(){
   els.taskWorkLogInput.value="";
   renderMarkdownInto("",els.taskWorkLogPreview);
   saveState();
-  renderTaskDetail();
+  renderAll();
   toast("本次工作记录已保存");
 }
 
@@ -1926,7 +2522,7 @@ function deleteTaskWorkLog(taskId,logId){
   if(!confirm("确定删除这条工作记录吗？")) return;
   task.workLogs=task.workLogs.filter(log=>log.id!==logId);
   saveState();
-  renderTaskDetail();
+  renderAll();
 }
 
 function renderMarkdownInto(source,target){
@@ -2337,6 +2933,9 @@ function escapeHtml(value){
   })[ch]);
 }
 
+window.openSearchResult=openSearchResult;
+window.openTaskWorkLogFromSearch=openTaskWorkLogFromSearch;
+window.openResearchLogFromSearch=openResearchLogFromSearch;
 window.openTaskDialogWithDue=openTaskDialogWithDue;
 window.openTaskDetail=openTaskDetail;
 window.deleteTaskWorkLog=deleteTaskWorkLog;
