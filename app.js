@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 13.1;
+const APP_VERSION = 13.2;
 
 const state = loadState();
 let activeFilter = "all";
@@ -168,6 +168,14 @@ const els = {
   restoreTodayProgressBtn: document.getElementById("restoreTodayProgressBtn"),
   todayDailyNote: document.getElementById("todayDailyNote"),
   todayDailyNoteSaveBtn: document.getElementById("todayDailyNoteSaveBtn"),
+  adminAddTaskBtn: document.getElementById("adminAddTaskBtn"),
+  adminOpenCount: document.getElementById("adminOpenCount"),
+  adminDueTodayCount: document.getElementById("adminDueTodayCount"),
+  adminOverdueCount: document.getElementById("adminOverdueCount"),
+  adminDoneCount: document.getElementById("adminDoneCount"),
+  adminTaskList: document.getElementById("adminTaskList"),
+  adminFilterBtns: [...document.querySelectorAll("[data-admin-filter]")],
+
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
   archiveWrap: document.getElementById("archiveWrap"),
@@ -553,6 +561,7 @@ function bindEvents(){
     if(e.key==="7") switchView("timeline");
     if(e.key==="8") switchView("trash");
     if(e.key==="9") switchView("project-dashboard");
+    if(e.key==="0") switchView("admin");
     if(e.key.toLowerCase()==="n") openTaskDialog();
   });
   els.addTaskTopBtn.addEventListener("click", openTaskDialog);
@@ -660,6 +669,12 @@ function bindEvents(){
   });
   els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
+  els.adminAddTaskBtn.addEventListener("click",openAdminTaskDialog);
+  els.adminFilterBtns.forEach(btn=>btn.addEventListener("click",()=>{
+    adminTaskFilter=btn.dataset.adminFilter;
+    els.adminFilterBtns.forEach(x=>x.classList.toggle("active",x===btn));
+    renderAdmin();
+  }));
   els.todayTop3AddBtn.addEventListener("click",addTodayTop3);
   els.todayDailyNoteSaveBtn.addEventListener("click",saveTodayDailyNote);
   els.restoreTodayProgressBtn.addEventListener("click",restoreAllTodayProgress);
@@ -1369,6 +1384,7 @@ function switchView(name){
   if(name==="timeline") renderTimeline();
   if(name==="trash") renderTrash();
   if(name==="today") renderToday();
+  if(name==="admin") renderAdmin();
   if(name==="project-dashboard") renderProjectDashboard();
 }
 
@@ -1806,6 +1822,74 @@ function showYesterdayReview(){
 }
 
 // ============================================================================
+/* V13.2 — Separate personal admin from research */
+let adminTaskFilter="open";
+
+function isResearchTask(task){
+  return !!task && task.category!=="admin";
+}
+
+function renderAdmin(){
+  if(!els.adminTaskList) return;
+  const today=localDateKey();
+  const tasks=state.tasks.filter(t=>t.category==="admin");
+  const open=tasks.filter(t=>!t.done);
+  const dueToday=open.filter(t=>t.due===today);
+  const overdue=open.filter(t=>t.due&&t.due<today);
+  const done=tasks.filter(t=>t.done);
+
+  els.adminOpenCount.textContent=open.length;
+  els.adminDueTodayCount.textContent=dueToday.length;
+  els.adminOverdueCount.textContent=overdue.length;
+  els.adminDoneCount.textContent=done.length;
+
+  let visible=adminTaskFilter==="today"?dueToday:
+              adminTaskFilter==="overdue"?overdue:
+              adminTaskFilter==="done"?done:open;
+
+  visible=[...visible].sort((a,b)=>{
+    if(a.done!==b.done) return Number(a.done)-Number(b.done);
+    if(a.due&&b.due) return a.due.localeCompare(b.due);
+    if(a.due) return -1;
+    if(b.due) return 1;
+    return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+  });
+
+  els.adminTaskList.innerHTML=visible.length?visible.map(t=>`
+    <div class="admin-task-row">
+      <button class="admin-task-check ${t.done?"done":""}" type="button"
+        onclick="toggleAdminTask('${escapeAttr(t.id)}')" title="${t.done?"重新打开":"完成"}">${t.done?"✓":""}</button>
+      <div class="admin-task-main">
+        <button class="admin-task-title ${t.done?"done":""}" type="button"
+          onclick="openTaskDetail('${escapeAttr(t.id)}','admin')">${escapeHtml(t.title)}</button>
+        <div class="admin-task-meta">${t.due?`截止 ${escapeHtml(t.due)} · `:""}${t.priority==="high"?"高优先级":t.priority==="low"?"低优先级":"常规事务"}</div>
+      </div>
+      <button class="admin-task-delete" type="button" onclick="deleteTask('${escapeAttr(t.id)}')" title="移到回收站">×</button>
+    </div>
+  `).join(""):`<div class="empty">这里暂时没有${adminTaskFilter==="done"?"已完成":adminTaskFilter==="today"?"今天截止":adminTaskFilter==="overdue"?"逾期":"待办"}事务。</div>`;
+}
+
+function openAdminTaskDialog(){
+  openTaskDialog();
+  els.taskCategory.value="admin";
+  if(els.taskProject){
+    els.taskProject.value="";
+    els.taskProject.disabled=true;
+  }
+  if(typeof updateTaskCategoryVisual==="function") updateTaskCategoryVisual();
+}
+
+function toggleAdminTask(id){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task) return;
+  task.done=!task.done;
+  task.completedAt=task.done?new Date().toISOString():null;
+  saveState();
+  renderAll();
+  toast(task.done?"事务已完成":"事务已重新打开");
+}
+
+// ============================================================================
 // V11 — Research Dashboard
 // ============================================================================
 
@@ -1836,7 +1920,7 @@ function renderProjectDashboard(){
   els.dashboardEmptyState.hidden=true; els.dashboardContent.hidden=false;
   els.dashboardProjectTitle.textContent=project.name;
   els.dashboardProjectSubtitle.textContent=(project.status==="archived"?"已归档 · ":"")+(project.description||"研究项目总览");
-  const tasks=state.tasks.filter(t=>t.projectId===project.id);
+  const tasks=state.tasks.filter(t=>t.projectId===project.id && isResearchTask(t));
   const logs=state.logs.filter(l=>l.projectId===project.id);
   const workLogs=tasks.flatMap(t=>(t.workLogs||[]));
   const resources=tasks.flatMap(t=>(t.resources||[]));
@@ -2127,7 +2211,7 @@ function renderTimelineProjectOptions(){
 function buildTimelineEvents(){
   const events=[];
 
-  state.tasks.forEach(task=>{
+  state.tasks.filter(isResearchTask).forEach(task=>{
     (task.workLogs||[]).forEach(log=>{
       if(!log.createdAt) return;
       events.push({
@@ -2927,6 +3011,7 @@ function todayDoneTasks(){
 }
 
 function renderAll(){
+  renderAdmin();
   renderToday();
   renderProjects();
   renderProjectOptions();
@@ -2970,7 +3055,7 @@ function renderProjects(){
 }
 
 function projectCardHtml(p,isArchived){
-  const tasks=state.tasks.filter(t=>t.projectId===p.id);
+  const tasks=state.tasks.filter(t=>t.projectId===p.id && isResearchTask(t));
   const open=tasks.filter(t=>!t.done).length;
   const done=tasks.filter(t=>t.done).length;
   const logs=state.logs.filter(l=>l.projectId===p.id).length;
@@ -3771,7 +3856,7 @@ function openProjectDetail(id){
 function renderProjectDetail(){
   const p=state.projects.find(x=>x.id===currentProjectId);
   if(!p){currentProjectId=null;switchView("projects");return;}
-  const tasks=state.tasks.filter(t=>t.projectId===p.id).sort((a,b)=>{
+  const tasks=state.tasks.filter(t=>t.projectId===p.id && isResearchTask(t)).sort((a,b)=>{
     if(a.done!==b.done) return Number(a.done)-Number(b.done);
     if(a.due&&b.due) return a.due.localeCompare(b.due);
     if(a.due) return -1;if(b.due) return 1;
@@ -3946,3 +4031,5 @@ window.toggleTodayTask=toggleTodayTask;
 window.removeTodayTop3=removeTodayTop3;
 
 window.hideTodayProgressItem=hideTodayProgressItem;
+
+window.toggleAdminTask=toggleAdminTask;

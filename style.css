@@ -2759,3 +2759,36 @@ body.today-focus-mode .today-top3-item{
   background:#f1f3f3;
   color:#825858;
 }
+
+/* ==========================================================================
+   V13.2 — Separate Admin workspace
+   ========================================================================== */
+.admin-page-header{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;margin-bottom:20px}
+.admin-page-header h2{margin:4px 0 0;font-family:"Newsreader","Songti SC",serif;font-size:42px;line-height:1.05}
+.admin-page-header p{margin:9px 0 0;color:var(--muted);font-size:14px}
+.admin-stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.admin-stat{padding:18px}
+.admin-stat span{display:block;color:#89939b;font-size:12px;font-weight:800;letter-spacing:.07em}
+.admin-stat strong{display:block;margin-top:8px;font-family:"Newsreader","Songti SC",serif;font-size:31px;line-height:1}
+.admin-stat small{display:block;margin-top:6px;color:#9ca4aa;font-size:12px}
+.admin-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.55fr);gap:20px}
+.admin-list-panel,.admin-note-panel{padding:22px}
+.admin-filter-tabs{display:flex;gap:5px}
+.admin-filter-tabs button{border:0;border-radius:999px;background:#eef1f3;color:#89939b;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer}
+.admin-filter-tabs button.active{background:#17232b;color:#fff}
+.admin-task-list{margin-top:14px}
+.admin-task-row{display:grid;grid-template-columns:20px minmax(0,1fr) 30px;gap:11px;align-items:start;padding:13px 0;border-bottom:1px solid var(--line)}
+.admin-task-row:last-child{border-bottom:0}
+.admin-task-check{width:16px;height:16px;border:1px solid #b9c2c7;border-radius:5px;background:#fff;cursor:pointer}
+.admin-task-check.done{background:var(--cat-admin,#a8753f);border-color:var(--cat-admin,#a8753f);color:#fff}
+.admin-task-title{border:0;background:transparent;padding:0;color:var(--text);font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+.admin-task-title.done{text-decoration:line-through;color:#9ba3a9}
+.admin-task-meta{margin-top:5px;color:#929ba1;font-size:12px}
+.admin-task-delete{width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:#a5adb2;font-size:16px;cursor:pointer}
+.admin-task-delete:hover{background:#f4eeee;color:#8a5757}
+.admin-note-panel>p{color:var(--muted);font-size:14px;line-height:1.65}
+.admin-rule{padding:13px 0;border-top:1px solid var(--line)}
+.admin-rule strong{display:block;font-size:14px}
+.admin-rule span{display:block;margin-top:4px;color:#8d979e;font-size:12px;line-height:1.5}
+@media(max-width:950px){.admin-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-layout{grid-template-columns:1fr}}
+@media(max-width:680px){.admin-page-header{align-items:flex-start;flex-direction:column}}

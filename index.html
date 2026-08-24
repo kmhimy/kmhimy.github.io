@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=13.1.0" />
+  <link rel="stylesheet" href="style.css?v=13.2.0" />
 </head>
 <body class="is-today-view">
 
@@ -112,6 +112,9 @@
         <nav class="side-nav">
           <button class="nav-item active" data-view="today" data-collapse-label="今日" type="button">
             <span class="nav-main"><span class="nav-symbol">今</span><span class="nav-label">今日</span></span><span class="nav-key">1</span>
+          </button>
+          <button class="nav-item" data-view="admin" data-collapse-label="事务" type="button">
+            <span class="nav-main"><span class="nav-symbol">事</span><span class="nav-label">事务</span></span><span class="nav-key">0</span>
           </button>
           <button class="nav-item" data-view="projects" data-collapse-label="科研项目" type="button">
             <span class="nav-main"><span class="nav-symbol">项</span><span class="nav-label">科研项目</span></span><span class="nav-key">2</span>
@@ -941,6 +944,48 @@
           </article>
         </div>
       </section>
+
+      <section id="view-admin" class="view">
+        <div class="admin-page-header">
+          <div>
+            <div class="panel-kicker">PERSONAL ADMIN</div>
+            <h2>事务</h2>
+            <p>这里放与科研项目无关的行政、生活和个人待办。</p>
+          </div>
+          <button id="adminAddTaskBtn" class="primary-btn" type="button">+ 添加事务</button>
+        </div>
+
+        <div class="admin-stats-grid">
+          <article class="panel admin-stat"><span>待办</span><strong id="adminOpenCount">0</strong><small>未完成事务</small></article>
+          <article class="panel admin-stat"><span>今日截止</span><strong id="adminDueTodayCount">0</strong><small>今天需要处理</small></article>
+          <article class="panel admin-stat"><span>已逾期</span><strong id="adminOverdueCount">0</strong><small>需要优先处理</small></article>
+          <article class="panel admin-stat"><span>已完成</span><strong id="adminDoneCount">0</strong><small>累计完成事务</small></article>
+        </div>
+
+        <div class="admin-layout">
+          <article class="panel admin-list-panel">
+            <div class="panel-head">
+              <div><div class="panel-kicker">ADMIN TASKS</div><h2>事务待办</h2></div>
+              <div class="admin-filter-tabs">
+                <button class="active" data-admin-filter="open" type="button">待办</button>
+                <button data-admin-filter="today" type="button">今天</button>
+                <button data-admin-filter="overdue" type="button">逾期</button>
+                <button data-admin-filter="done" type="button">已完成</button>
+              </div>
+            </div>
+            <div id="adminTaskList" class="admin-task-list"></div>
+          </article>
+
+          <aside class="panel admin-note-panel">
+            <div class="panel-kicker">SEPARATE WORKSPACE</div>
+            <h2>与科研分开</h2>
+            <p>事务不会计入科研项目、研究总览或科研时间轴；但仍会出现在“今天”和“日历”里，方便你安排每天的整体工作。</p>
+            <div class="admin-rule"><strong>科研</strong><span>项目、论文、推导、数值、科研日志。</span></div>
+            <div class="admin-rule"><strong>事务</strong><span>报销、体检、材料、行政手续、生活安排等。</span></div>
+          </aside>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -1076,18 +1121,12 @@
   </button>
 
   <div id="toast" class="toast"></div>
-<script src="config.js?v=13.1.0"></script>
+<script src="config.js?v=13.2.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=13.1.0"></script>
-<div id="priorityCount"></div><div id="priorityStat"></div>
-  <button id="addTaskInlineBtn" type="button"></button>
-  <div id="taskList"></div><div id="doneList"></div>
-  <div id="doneCount"></div><div id="openCount"></div><div id="projectCount"></div>
-  <textarea id="quickNote"></textarea><div id="noteSaved"></div>
-  <div id="todayWorkLogList"></div><div id="todayWorkLogCount"></div>
+  <script src="app.js?v=13.2.0"></script>
 </div>
 
 </body>
