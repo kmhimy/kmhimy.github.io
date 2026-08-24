@@ -2792,3 +2792,34 @@ body.today-focus-mode .today-top3-item{
 .admin-rule span{display:block;margin-top:4px;color:#8d979e;font-size:12px;line-height:1.5}
 @media(max-width:950px){.admin-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-layout{grid-template-columns:1fr}}
 @media(max-width:680px){.admin-page-header{align-items:flex-start;flex-direction:column}}
+
+/* ==========================================================================
+   V14 — Stability and consistency hardening
+   ========================================================================== */
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{
+  outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  outline-offset:2px;
+}
+button{touch-action:manipulation}
+.v14-safety-panel{margin-top:18px;padding:22px}
+.v14-safety-row{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.v14-safety-row strong,.v14-safety-row span{display:block}
+.v14-safety-row span{margin-top:4px;color:var(--muted);font-size:12px}
+.v14-sync-status{color:var(--muted);font-size:12px;text-align:right}
+.v14-safety-actions{display:flex;gap:8px;margin-top:14px}
+.v14-safety-help{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.55}
+.task-title,.project-title,.log-title,.admin-task-title,.today-progress-entry-main,.resource-item,.attachment-item{
+  overflow-wrap:anywhere;word-break:break-word;
+}
+@media(pointer:coarse){.nav-item,button{min-height:38px}}
+@media(max-width:900px){
+  .today-command-header,.admin-page-header{gap:14px}
+  .today-header-actions{flex-wrap:wrap}
+  .calendar-layout,.project-detail-layout,.research-dashboard-grid{grid-template-columns:1fr!important}
+}
+@media(max-width:640px){
+  .main-content,main{min-width:0}
+  .today-command-header h2,.admin-page-header h2{font-size:34px!important}
+  .panel{max-width:100%;box-sizing:border-box}
+  dialog{max-width:calc(100vw - 24px)!important}
+}

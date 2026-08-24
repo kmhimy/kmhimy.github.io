@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 13.2;
+const APP_VERSION = 14;
 
 const state = loadState();
 let activeFilter = "all";
@@ -385,6 +385,11 @@ function uidStatic(prefix="id"){
 function uid(prefix="id"){ return uidStatic(prefix); }
 
 function saveState(options = {}){
+  // V14 invariant: personal admin tasks never belong to research projects.
+  if(state && Array.isArray(state.tasks)){
+    state.tasks.forEach(t=>{ if(t && t.category==="admin") t.projectId=null; });
+  }
+
   const { touch = true, cloud = true } = options;
 
   if(touch && !applyingCloudState){
@@ -465,6 +470,27 @@ function cleanupOldOfflineCache(){
       .then(keys=>Promise.all(keys.map(k=>caches.delete(k))))
       .catch(()=>{});
   }
+}
+
+
+function exportFullBackup(){
+  const payload={
+    format:"ResearchDeskBackup",
+    version:14,
+    exportedAt:new Date().toISOString(),
+    state:state
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`research-desk-backup-${localDateKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  if(els.dataSafetyStatus) els.dataSafetyStatus.textContent="刚刚已备份";
+  toast("完整备份已导出");
 }
 
 function bindEvents(){
@@ -669,6 +695,7 @@ function bindEvents(){
   });
   els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
+  if(els.v14BackupBtn) els.v14BackupBtn.addEventListener("click",exportFullBackup);
   els.adminAddTaskBtn.addEventListener("click",openAdminTaskDialog);
   els.adminFilterBtns.forEach(btn=>btn.addEventListener("click",()=>{
     adminTaskFilter=btn.dataset.adminFilter;
