@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 9;
+const APP_VERSION = 10;
 
 const state = loadState();
 let activeFilter = "all";
@@ -20,6 +20,9 @@ let calendarCursor=new Date();
 calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
 let searchMatches=[];
 let searchActiveIndex=0;
+let timelineProjectFilter="all";
+let timelineTypeFilter="all";
+let timelineRangeFilter="30";
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -92,6 +95,15 @@ const els = {
   taskWorkLogPreview: document.getElementById("taskWorkLogPreview"),
   saveTaskWorkLogBtn: document.getElementById("saveTaskWorkLogBtn"),
   taskWorkLogList: document.getElementById("taskWorkLogList"),
+  taskRelationType: document.getElementById("taskRelationType"),
+  taskRelationTarget: document.getElementById("taskRelationTarget"),
+  addTaskRelationBtn: document.getElementById("addTaskRelationBtn"),
+  taskRelationsList: document.getElementById("taskRelationsList"),
+  taskResourceTitle: document.getElementById("taskResourceTitle"),
+  taskResourceType: document.getElementById("taskResourceType"),
+  taskResourceUrl: document.getElementById("taskResourceUrl"),
+  addTaskResourceBtn: document.getElementById("addTaskResourceBtn"),
+  taskResourcesList: document.getElementById("taskResourcesList"),
   markdownToolbars: [...document.querySelectorAll(".markdown-toolbar")],
 
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -109,6 +121,15 @@ const els = {
   fontOptionBtns: [...document.querySelectorAll("[data-font-option]")],
   densityOptionBtns: [...document.querySelectorAll("[data-density-option]")],
 
+  timelineProjectFilter: document.getElementById("timelineProjectFilter"),
+  timelineTypeFilter: document.getElementById("timelineTypeFilter"),
+  timelineRangeFilter: document.getElementById("timelineRangeFilter"),
+  timelineCount: document.getElementById("timelineCount"),
+  timelineList: document.getElementById("timelineList"),
+  trashCount: document.getElementById("trashCount"),
+  trashList: document.getElementById("trashList"),
+  emptyTrashBtn: document.getElementById("emptyTrashBtn"),
+
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
   archiveWrap: document.getElementById("archiveWrap"),
@@ -117,6 +138,7 @@ const els = {
   addProjectBtn: document.getElementById("addProjectBtn"),
 
   backToProjectsBtn: document.getElementById("backToProjectsBtn"),
+  detailTrashBtn: document.getElementById("detailTrashBtn"),
   detailArchiveBtn: document.getElementById("detailArchiveBtn"),
   detailRestoreBtn: document.getElementById("detailRestoreBtn"),
   detailStatusBadge: document.getElementById("detailStatusBadge"),
@@ -202,6 +224,7 @@ function defaultState(){
     projects: [],
     logs: [],
     notes: {},
+    trash: [],
     settings: {
       focusMode:false,
       appearance:{
@@ -233,6 +256,7 @@ function migrateToV2(s){
   if(!Array.isArray(s.projects)) s.projects = [];
   if(!Array.isArray(s.logs)) s.logs = [];
   if(!s.notes || typeof s.notes !== "object") s.notes = {};
+  if(!Array.isArray(s.trash)) s.trash = [];
   if(!s.settings || typeof s.settings !== "object") s.settings = {focusMode:false};
   if(!s.settings.appearance || typeof s.settings.appearance !== "object"){
     s.settings.appearance={theme:"academic",font:"mixed",density:"comfortable"};
@@ -264,6 +288,8 @@ function migrateToV2(s){
     if(!("completedAt" in t)) t.completedAt = null;
     if(!("detailsMarkdown" in t)) t.detailsMarkdown = "";
     if(!Array.isArray(t.workLogs)) t.workLogs = [];
+    if(!Array.isArray(t.relations)) t.relations = [];
+    if(!Array.isArray(t.resources)) t.resources = [];
   });
 
   // V1 的“今日重点”是独立数据；V2 将其迁移为真正的任务。
@@ -480,6 +506,8 @@ function bindEvents(){
     if(e.key==="4") switchView("review");
     if(e.key==="5") switchView("calendar");
     if(e.key==="6") switchView("appearance");
+    if(e.key==="7") switchView("timeline");
+    if(e.key==="8") switchView("trash");
     if(e.key.toLowerCase()==="n") openTaskDialog();
   });
 
@@ -544,7 +572,9 @@ function bindEvents(){
       completedAt:null,
       priorityDate:makePriority ? localDateKey() : null,
       detailsMarkdown:getTaskTemplateContent(els.taskTemplate.value),
-      workLogs:[]
+      workLogs:[],
+      relations:[],
+      resources:[]
     });
 
     saveState();
@@ -607,6 +637,23 @@ function bindEvents(){
     btn.addEventListener("click",()=>insertResearchNoteSyntax(btn.dataset.noteInsert));
   });
 
+  els.addTaskRelationBtn.addEventListener("click",addCurrentTaskRelation);
+  els.addTaskResourceBtn.addEventListener("click",addCurrentTaskResource);
+
+  els.timelineProjectFilter.addEventListener("change",()=>{
+    timelineProjectFilter=els.timelineProjectFilter.value;
+    renderTimeline();
+  });
+  els.timelineTypeFilter.addEventListener("change",()=>{
+    timelineTypeFilter=els.timelineTypeFilter.value;
+    renderTimeline();
+  });
+  els.timelineRangeFilter.addEventListener("change",()=>{
+    timelineRangeFilter=els.timelineRangeFilter.value;
+    renderTimeline();
+  });
+  els.emptyTrashBtn.addEventListener("click",emptyTrash);
+
   els.taskTemplateApply.addEventListener("change",()=>{
     const template=els.taskTemplateApply.value;
     if(template) applyTemplateToCurrentTask(template);
@@ -655,6 +702,9 @@ function bindEvents(){
     switchView("projects");
   });
 
+  els.detailTrashBtn.addEventListener("click", ()=>{
+    if(currentProjectId) deleteProject(currentProjectId);
+  });
   els.detailArchiveBtn.addEventListener("click", ()=>{
     if(currentProjectId) archiveProject(currentProjectId,true);
   });
@@ -1279,13 +1329,17 @@ function switchView(name){
     log:"科研日志",
     review:"本周总结",
     calendar:"日历",
-    appearance:"外观"
+    appearance:"外观",
+    timeline:"科研时间轴",
+    trash:"回收站"
   };
   els.pageTitle.textContent=titles[name] || "科研工作台";
 
   if(name==="review") renderReview();
   if(name==="calendar") renderCalendar();
   if(name==="appearance") renderAppearanceControls();
+  if(name==="timeline") renderTimeline();
+  if(name==="trash") renderTrash();
 }
 
 
@@ -1457,6 +1511,465 @@ function resetAppearanceSettings(){
   toast("已恢复默认外观");
 }
 
+
+// ============================================================================
+// V10 — Task relations
+// ============================================================================
+
+function relationLabel(type){
+  return ({depends:"依赖于",related:"相关",followup:"后续"})[type] || "相关";
+}
+
+function renderTaskRelations(task){
+  const options=state.tasks
+    .filter(t=>t.id!==task.id)
+    .filter(t=>{
+      const project=t.projectId?state.projects.find(p=>p.id===t.projectId):null;
+      return !project || project.status!=="archived";
+    })
+    .sort((a,b)=>{
+      const sameA=a.projectId===task.projectId?0:1;
+      const sameB=b.projectId===task.projectId?0:1;
+      return sameA-sameB || a.title.localeCompare(b.title,"zh-CN");
+    });
+
+  els.taskRelationTarget.innerHTML=options.length
+    ? options.map(t=>`<option value="${escapeAttr(t.id)}">${escapeHtml(t.title)}${t.projectId?` · ${escapeHtml(projectName(t.projectId))}`:""}</option>`).join("")
+    : `<option value="">暂无其他任务</option>`;
+
+  const relations=(task.relations||[])
+    .map(r=>({relation:r,target:state.tasks.find(t=>t.id===r.taskId)}))
+    .filter(x=>x.target);
+
+  if(!relations.length){
+    els.taskRelationsList.innerHTML=`<div class="empty">还没有任务关联。</div>`;
+    return;
+  }
+
+  els.taskRelationsList.innerHTML=relations.map(({relation,target})=>`
+    <div class="relation-row">
+      <span class="relation-type">${relationLabel(relation.type)}</span>
+      <button class="relation-title-btn" type="button"
+        onclick="openTaskDetail('${target.id}','today')">${escapeHtml(target.title)}</button>
+      <button class="row-icon-btn" type="button"
+        onclick="removeTaskRelation('${escapeAttr(relation.id)}')" title="移除关联">×</button>
+    </div>
+  `).join("");
+}
+
+function addCurrentTaskRelation(){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+
+  const targetId=els.taskRelationTarget.value;
+  const type=els.taskRelationType.value;
+  if(!targetId) return;
+
+  task.relations=task.relations||[];
+  if(task.relations.some(r=>r.taskId===targetId && r.type===type)){
+    toast("这个关联已经存在");
+    return;
+  }
+
+  task.relations.push({
+    id:uid("relation"),
+    taskId:targetId,
+    type,
+    createdAt:new Date().toISOString()
+  });
+
+  saveState();
+  renderTaskRelations(task);
+  toast("任务关联已添加");
+}
+
+function removeTaskRelation(relationId){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+  task.relations=(task.relations||[]).filter(r=>r.id!==relationId);
+  saveState();
+  renderTaskRelations(task);
+}
+
+// ============================================================================
+// V10 — Research resources
+// ============================================================================
+
+function resourceTypeName(type){
+  return ({
+    overleaf:"Overleaf",
+    github:"GitHub",
+    drive:"Google Drive",
+    paper:"论文 / arXiv / DOI",
+    data:"数据 / Figure",
+    web:"网页",
+    other:"其他"
+  })[type] || "链接";
+}
+
+function resourceTypeLabel(type){
+  return ({
+    overleaf:"OV",
+    github:"GH",
+    drive:"DR",
+    paper:"PDF",
+    data:"DATA",
+    web:"WEB",
+    other:"LINK"
+  })[type] || "LINK";
+}
+
+function normalizeResourceUrl(raw){
+  let url=String(raw||"").trim();
+  if(!url) return "";
+  if(!/^https?:\/\//i.test(url)) url="https://"+url;
+
+  try{
+    const parsed=new URL(url);
+    if(!["http:","https:"].includes(parsed.protocol)) return "";
+    return parsed.href;
+  }catch{
+    return "";
+  }
+}
+
+function renderTaskResources(task){
+  const resources=task.resources||[];
+  if(!resources.length){
+    els.taskResourcesList.innerHTML=`<div class="empty">还没有科研资源链接。</div>`;
+    return;
+  }
+
+  els.taskResourcesList.innerHTML=resources.map(r=>`
+    <div class="resource-row">
+      <div class="resource-icon">${resourceTypeLabel(r.type)}</div>
+      <div class="resource-main">
+        <a class="resource-title" href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a>
+        <div class="resource-url">${escapeHtml(r.url)}</div>
+      </div>
+      <button class="row-icon-btn" type="button"
+        onclick="removeTaskResource('${escapeAttr(r.id)}')" title="删除资源">×</button>
+    </div>
+  `).join("");
+}
+
+function addCurrentTaskResource(){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+
+  const title=els.taskResourceTitle.value.trim();
+  const url=normalizeResourceUrl(els.taskResourceUrl.value);
+  const type=els.taskResourceType.value;
+
+  if(!title){
+    toast("请填写资源名称");
+    els.taskResourceTitle.focus();
+    return;
+  }
+  if(!url){
+    toast("请输入有效的 http / https 链接");
+    els.taskResourceUrl.focus();
+    return;
+  }
+
+  task.resources=task.resources||[];
+  task.resources.push({
+    id:uid("resource"),
+    title,
+    url,
+    type,
+    createdAt:new Date().toISOString()
+  });
+
+  els.taskResourceTitle.value="";
+  els.taskResourceUrl.value="";
+  saveState();
+  renderTaskResources(task);
+  toast("科研资源已添加");
+}
+
+function removeTaskResource(resourceId){
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+  const resource=(task.resources||[]).find(r=>r.id===resourceId);
+  if(!resource) return;
+  if(!confirm(`删除资源“${resource.title}”？`)) return;
+
+  task.resources=(task.resources||[]).filter(r=>r.id!==resourceId);
+  saveState();
+  renderTaskResources(task);
+}
+
+// ============================================================================
+// V10 — Research timeline
+// ============================================================================
+
+function renderTimelineProjectOptions(){
+  const current=timelineProjectFilter;
+  const projects=[...state.projects].sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));
+
+  els.timelineProjectFilter.innerHTML=
+    `<option value="all">全部项目</option>`+
+    projects.map(p=>`<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}${p.status==="archived"?" · 已归档":""}</option>`).join("");
+
+  els.timelineProjectFilter.value=projects.some(p=>p.id===current)?current:"all";
+  timelineProjectFilter=els.timelineProjectFilter.value;
+}
+
+function buildTimelineEvents(){
+  const events=[];
+
+  state.tasks.forEach(task=>{
+    (task.workLogs||[]).forEach(log=>{
+      if(!log.createdAt) return;
+      events.push({
+        id:`worklog-${log.id}`,
+        type:"worklog",
+        date:log.createdAt,
+        title:task.title,
+        projectId:task.projectId||null,
+        excerpt:makePlainExcerpt(log.content,260),
+        taskId:task.id,
+        workLogId:log.id
+      });
+    });
+
+    if(task.done && task.completedAt){
+      events.push({
+        id:`completed-${task.id}`,
+        type:"completed-task",
+        date:task.completedAt,
+        title:task.title,
+        projectId:task.projectId||null,
+        excerpt:"任务完成",
+        taskId:task.id
+      });
+    }
+  });
+
+  state.logs.forEach(log=>{
+    if(!log.createdAt) return;
+    events.push({
+      id:`research-log-${log.id}`,
+      type:"research-log",
+      date:log.createdAt,
+      title:log.topic,
+      projectId:log.projectId||null,
+      excerpt:makePlainExcerpt([log.progress,log.finding,log.next].filter(Boolean).join(" · "),260),
+      logId:log.id
+    });
+  });
+
+  return events.sort((a,b)=>b.date.localeCompare(a.date));
+}
+
+function timelineTypeLabel(type){
+  return ({
+    worklog:"工作记录",
+    "research-log":"科研日志",
+    "completed-task":"完成任务"
+  })[type] || "记录";
+}
+
+function renderTimeline(){
+  if(!els.timelineList) return;
+  renderTimelineProjectOptions();
+
+  els.timelineTypeFilter.value=timelineTypeFilter;
+  els.timelineRangeFilter.value=timelineRangeFilter;
+
+  let events=buildTimelineEvents();
+
+  if(timelineProjectFilter!=="all"){
+    events=events.filter(e=>e.projectId===timelineProjectFilter);
+  }
+  if(timelineTypeFilter!=="all"){
+    events=events.filter(e=>e.type===timelineTypeFilter);
+  }
+  if(timelineRangeFilter!=="all"){
+    const days=Number(timelineRangeFilter);
+    const cutoff=new Date();
+    cutoff.setHours(0,0,0,0);
+    cutoff.setDate(cutoff.getDate()-days+1);
+    events=events.filter(e=>new Date(e.date)>=cutoff);
+  }
+
+  els.timelineCount.textContent=events.length;
+
+  if(!events.length){
+    els.timelineList.innerHTML=`<div class="empty">当前筛选条件下还没有研究活动。</div>`;
+    return;
+  }
+
+  const groups=new Map();
+  events.forEach(event=>{
+    const key=localDateKey(new Date(event.date));
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(event);
+  });
+
+  els.timelineList.innerHTML=[...groups.entries()].map(([day,items])=>{
+    const date=new Date(`${day}T12:00:00`);
+    const md=new Intl.DateTimeFormat("zh-CN",{month:"numeric",day:"numeric"}).format(date);
+    const weekday=new Intl.DateTimeFormat("zh-CN",{weekday:"short"}).format(date);
+
+    return `
+      <div class="timeline-day-group">
+        <div class="timeline-day-label"><strong>${md}</strong><span>${weekday}</span></div>
+        <div class="timeline-items">
+          ${items.map(timelineEventHtml).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function timelineEventHtml(event){
+  let action="";
+  if(event.type==="worklog"){
+    action=`openTaskWorkLogFromSearch('${event.taskId}','${event.workLogId}','timeline')`;
+  }else if(event.type==="completed-task"){
+    action=`openTaskDetail('${event.taskId}','timeline')`;
+  }else{
+    action=`openResearchLogFromSearch('${event.logId}')`;
+  }
+
+  return `
+    <div class="timeline-event ${event.type}">
+      <div class="timeline-event-head">
+        <span class="timeline-event-type">${timelineTypeLabel(event.type)}</span>
+        <span class="timeline-event-time">${formatTimeOnly(event.date)}</span>
+      </div>
+      <button class="timeline-event-title" type="button" onclick="${action}">${escapeHtml(event.title)}</button>
+      <div class="timeline-event-project">${event.projectId?escapeHtml(projectName(event.projectId)):"未归属项目"}</div>
+      ${event.excerpt?`<div class="timeline-event-excerpt">${escapeHtml(event.excerpt)}</div>`:""}
+    </div>
+  `;
+}
+
+// ============================================================================
+// V10 — Recycle bin
+// ============================================================================
+
+function trashTypeLabel(type){
+  return ({
+    task:"任务",
+    "research-log":"科研日志",
+    project:"项目",
+    worklog:"工作记录"
+  })[type] || "内容";
+}
+
+function moveToTrash(entityType,data,title){
+  state.trash=state.trash||[];
+  state.trash.unshift({
+    id:uid("trash"),
+    entityType,
+    deletedAt:new Date().toISOString(),
+    title:title||"未命名",
+    data:JSON.parse(JSON.stringify(data))
+  });
+}
+
+function renderTrash(){
+  if(!els.trashList) return;
+  state.trash=state.trash||[];
+  els.trashCount.textContent=state.trash.length;
+
+  if(!state.trash.length){
+    els.trashList.innerHTML=`<div class="empty">回收站是空的。</div>`;
+    return;
+  }
+
+  els.trashList.innerHTML=state.trash.map(item=>`
+    <div class="trash-row">
+      <div class="trash-type">${trashTypeLabel(item.entityType)}</div>
+      <div>
+        <div class="trash-title">${escapeHtml(item.title||"未命名")}</div>
+        <div class="trash-meta">删除于 ${formatDateTime(item.deletedAt)}</div>
+      </div>
+      <div class="trash-actions">
+        <button class="trash-restore-btn" type="button" onclick="restoreTrashItem('${escapeAttr(item.id)}')">恢复</button>
+        <button class="trash-delete-btn" type="button" onclick="permanentlyDeleteTrashItem('${escapeAttr(item.id)}')">永久删除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function restoreTrashItem(trashId){
+  const item=(state.trash||[]).find(x=>x.id===trashId);
+  if(!item) return;
+
+  const data=JSON.parse(JSON.stringify(item.data));
+
+  if(item.entityType==="task"){
+    if(state.tasks.some(t=>t.id===data.id)) data.id=uid("task");
+    if(data.projectId && !state.projects.some(p=>p.id===data.projectId)) data.projectId=null;
+    state.tasks.push(data);
+
+  }else if(item.entityType==="research-log"){
+    if(state.logs.some(l=>l.id===data.id)) data.id=uid("log");
+    if(data.projectId && !state.projects.some(p=>p.id===data.projectId)) data.projectId=null;
+    state.logs.push(data);
+
+  }else if(item.entityType==="project"){
+    const linkedTaskIds=Array.isArray(data._linkedTaskIds)?data._linkedTaskIds:[];
+    const linkedLogIds=Array.isArray(data._linkedLogIds)?data._linkedLogIds:[];
+    delete data._linkedTaskIds;
+    delete data._linkedLogIds;
+
+    if(state.projects.some(p=>p.id===data.id)) data.id=uid("project");
+    state.projects.push(data);
+
+    state.tasks.forEach(t=>{
+      if(linkedTaskIds.includes(t.id) && !t.projectId) t.projectId=data.id;
+    });
+    state.logs.forEach(l=>{
+      if(linkedLogIds.includes(l.id) && !l.projectId) l.projectId=data.id;
+    });
+
+  }else if(item.entityType==="worklog"){
+    const task=state.tasks.find(t=>t.id===data.taskId);
+    if(!task){
+      toast("原任务当前不在工作台中，请先恢复原任务");
+      return;
+    }
+    const restored={...data};
+    delete restored.taskId;
+    if((task.workLogs||[]).some(log=>log.id===restored.id)) restored.id=uid("worklog");
+    task.workLogs=task.workLogs||[];
+    task.workLogs.push(restored);
+  }
+
+  state.trash=state.trash.filter(x=>x.id!==trashId);
+  saveState();
+  renderAll();
+  toast("已从回收站恢复");
+}
+
+function permanentlyDeleteTrashItem(trashId){
+  const item=(state.trash||[]).find(x=>x.id===trashId);
+  if(!item) return;
+  if(!confirm(`永久删除“${item.title}”？此操作无法恢复。`)) return;
+
+  state.trash=state.trash.filter(x=>x.id!==trashId);
+  saveState();
+  renderTrash();
+  toast("已永久删除");
+}
+
+function emptyTrash(){
+  if(!(state.trash||[]).length){
+    toast("回收站已经是空的");
+    return;
+  }
+  if(!confirm(`永久删除回收站中的 ${state.trash.length} 项内容？此操作无法恢复。`)) return;
+
+  state.trash=[];
+  saveState();
+  renderTrash();
+  toast("回收站已清空");
+}
 
 // ============================================================================
 // V9 — Today's work-log summary
@@ -1806,7 +2319,12 @@ function runGlobalSearch(rawQuery){
   });
 
   state.tasks.forEach(task=>{
-    const hay=[task.title,task.detailsMarkdown].filter(Boolean).join("\n");
+    const resourceText=(task.resources||[]).map(r=>`${r.title} ${r.url}`).join("\n");
+    const relationText=(task.relations||[]).map(r=>{
+      const target=state.tasks.find(x=>x.id===r.taskId);
+      return target?`${relationLabel(r.type)} ${target.title}`:"";
+    }).join("\n");
+    const hay=[task.title,task.detailsMarkdown,resourceText,relationText].filter(Boolean).join("\n");
     if(searchTextMatches(hay,q)){
       matches.push({
         type:"task",
@@ -2032,6 +2550,8 @@ function renderAll(){
   renderReview();
   renderCalendar();
   renderAppearanceControls();
+  renderTimeline();
+  renderTrash();
   if(currentProjectId) renderProjectDetail();
   if(currentTaskId) renderTaskDetail();
 }
@@ -2374,6 +2894,8 @@ function renderTaskDetail(){
 
   els.taskDetailTitle.textContent=task.title;
   els.taskWorkLogCount.textContent=(task.workLogs||[]).length;
+  renderTaskRelations(task);
+  renderTaskResources(task);
   setTaskNoteMode(taskNoteMode,false);
 
   const meta=[];
@@ -2519,10 +3041,15 @@ function saveCurrentTaskWorkLog(){
 function deleteTaskWorkLog(taskId,logId){
   const task=state.tasks.find(t=>t.id===taskId);
   if(!task||!Array.isArray(task.workLogs)) return;
-  if(!confirm("确定删除这条工作记录吗？")) return;
-  task.workLogs=task.workLogs.filter(log=>log.id!==logId);
+  const log=task.workLogs.find(x=>x.id===logId);
+  if(!log) return;
+  if(!confirm("把这条工作记录移到回收站？")) return;
+
+  moveToTrash("worklog",{...log,taskId:task.id},`${task.title} · 工作记录`);
+  task.workLogs=task.workLogs.filter(x=>x.id!==logId);
   saveState();
   renderAll();
+  toast("工作记录已移到回收站");
 }
 
 function renderMarkdownInto(source,target){
@@ -2706,6 +3233,21 @@ function exportTaskMarkdown(id){
   lines.push("");
   lines.push(task.detailsMarkdown?.trim()||"_暂无记录_");
   lines.push("");
+  lines.push("## 任务关联");
+  lines.push("");
+  const relations=(task.relations||[]).map(r=>{
+    const target=state.tasks.find(t=>t.id===r.taskId);
+    return target?`- ${relationLabel(r.type)}：${target.title}`:null;
+  }).filter(Boolean);
+  lines.push(relations.length?relations.join("\n"):"_暂无任务关联_");
+
+  lines.push("");
+  lines.push("## 科研资源");
+  lines.push("");
+  const resources=(task.resources||[]).map(r=>`- [${r.title}](${r.url}) · ${resourceTypeName(r.type)}`);
+  lines.push(resources.length?resources.join("\n"):"_暂无科研资源_");
+
+  lines.push("");
   lines.push("## 工作记录");
 
   const logs=[...(task.workLogs||[])].sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
@@ -2789,13 +3331,20 @@ function toggleTask(id, done){
 }
 
 function deleteTask(id){
+  const task=state.tasks.find(x=>x.id===id);
+  if(!task) return;
+  if(!confirm(`把任务“${task.title}”移到回收站？`)) return;
+
+  moveToTrash("task",task,task.title);
   state.tasks=state.tasks.filter(x=>x.id!==id);
+
   if(currentTaskId===id){
     currentTaskId=null;
     switchView(taskDetailReturnView||"today");
   }
   saveState();
   renderAll();
+  toast("任务已移到回收站");
 }
 
 function openProjectDetail(id){
@@ -2864,18 +3413,43 @@ function restoreProject(id,fromDetail=false){
 }
 
 function deleteProject(id){
-  if(!confirm("确定永久删除这个项目吗？建议已完成项目优先使用“归档”。删除后，相关任务和科研日志会保留，但会变成未归属项目。")) return;
+  const project=state.projects.find(x=>x.id===id);
+  if(!project) return;
+
+  const linkedTasks=state.tasks.filter(t=>t.projectId===id);
+  const linkedLogs=state.logs.filter(l=>l.projectId===id);
+
+  if(!confirm(`把项目“${project.name}”移到回收站？\n\n项目下 ${linkedTasks.length} 个任务和 ${linkedLogs.length} 条科研日志不会删除，会暂时显示为未归属项目。`)) return;
+
+  moveToTrash("project",{
+    ...project,
+    _linkedTaskIds:linkedTasks.map(t=>t.id),
+    _linkedLogIds:linkedLogs.map(l=>l.id)
+  },project.name);
+
   state.projects=state.projects.filter(x=>x.id!==id);
   state.tasks.forEach(t=>{if(t.projectId===id)t.projectId=null;});
   state.logs.forEach(l=>{if(l.projectId===id)l.projectId=null;});
-  if(currentProjectId===id){currentProjectId=null;switchView("projects");}
-  saveState();renderAll();
+
+  if(currentProjectId===id){
+    currentProjectId=null;
+    switchView("projects");
+  }
+  saveState();
+  renderAll();
+  toast("项目已移到回收站");
 }
 
 function deleteLog(id){
+  const log=state.logs.find(x=>x.id===id);
+  if(!log) return;
+  if(!confirm(`把科研日志“${log.topic}”移到回收站？`)) return;
+
+  moveToTrash("research-log",log,log.topic);
   state.logs=state.logs.filter(x=>x.id!==id);
   saveState();
   renderAll();
+  toast("科研日志已移到回收站");
 }
 
 function exportData(){
@@ -2933,6 +3507,10 @@ function escapeHtml(value){
   })[ch]);
 }
 
+window.removeTaskRelation=removeTaskRelation;
+window.removeTaskResource=removeTaskResource;
+window.restoreTrashItem=restoreTrashItem;
+window.permanentlyDeleteTrashItem=permanentlyDeleteTrashItem;
 window.openSearchResult=openSearchResult;
 window.openTaskWorkLogFromSearch=openTaskWorkLogFromSearch;
 window.openResearchLogFromSearch=openResearchLogFromSearch;

@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=9.0.0" />
+  <link rel="stylesheet" href="style.css?v=10.0.0" />
 </head>
 <body>
 
@@ -127,6 +127,12 @@
           </button>
           <button class="nav-item" data-view="appearance" data-collapse-label="外观" type="button">
             <span class="nav-main"><span class="nav-symbol">风</span><span class="nav-label">外观</span></span><span class="nav-key">6</span>
+          </button>
+          <button class="nav-item" data-view="timeline" data-collapse-label="科研时间轴" type="button">
+            <span class="nav-main"><span class="nav-symbol">轴</span><span class="nav-label">科研时间轴</span></span><span class="nav-key">7</span>
+          </button>
+          <button class="nav-item" data-view="trash" data-collapse-label="回收站" type="button">
+            <span class="nav-main"><span class="nav-symbol">收</span><span class="nav-label">回收站</span></span><span class="nav-key">8</span>
           </button>
         </nav>
       </div>
@@ -357,6 +363,54 @@
           </div>
         </article>
 
+        <div class="task-detail-grid-v10">
+          <article class="panel task-relations-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">TASK RELATIONS</div>
+                <h2>任务关联</h2>
+                <p class="panel-subtext">把任务串成研究路线：依赖、相关、后续。</p>
+              </div>
+            </div>
+            <div class="relation-add-row">
+              <select id="taskRelationType" aria-label="关联类型">
+                <option value="depends">依赖于</option>
+                <option value="related">相关任务</option>
+                <option value="followup">后续任务</option>
+              </select>
+              <select id="taskRelationTarget" aria-label="目标任务"></select>
+              <button id="addTaskRelationBtn" class="ghost-btn compact-btn" type="button">+ 添加关联</button>
+            </div>
+            <div id="taskRelationsList" class="relation-list"></div>
+          </article>
+
+          <article class="panel task-resources-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">RESOURCES</div>
+                <h2>附件 / 链接</h2>
+                <p class="panel-subtext">集中保存 Overleaf、GitHub、Drive、论文、数据和网页入口。</p>
+              </div>
+            </div>
+            <div class="resource-add-grid">
+              <input id="taskResourceTitle" type="text" placeholder="名称，例如：Overleaf 主文稿" />
+              <select id="taskResourceType" aria-label="资源类型">
+                <option value="overleaf">Overleaf</option>
+                <option value="github">GitHub</option>
+                <option value="drive">Google Drive</option>
+                <option value="paper">论文 / arXiv / DOI</option>
+                <option value="data">数据 / Figure</option>
+                <option value="web">网页</option>
+                <option value="other">其他</option>
+              </select>
+              <input id="taskResourceUrl" class="resource-url-input" type="url" placeholder="https://..." />
+              <button id="addTaskResourceBtn" class="ghost-btn compact-btn" type="button">+ 添加资源</button>
+            </div>
+            <div class="resource-note">V10 采用链接型附件，不把 PDF/图片/代码本体塞进 Supabase JSON，云同步更稳定。</div>
+            <div id="taskResourcesList" class="resource-list"></div>
+          </article>
+        </div>
+
         <article class="panel worklog-composer">
           <div class="panel-head">
             <div>
@@ -443,6 +497,7 @@
         <div class="detail-toolbar">
           <button id="backToProjectsBtn" class="ghost-btn" type="button">← 返回科研项目</button>
           <div class="detail-actions">
+            <button id="detailTrashBtn" class="danger-outline-btn" type="button">移到回收站</button>
             <button id="detailArchiveBtn" class="ghost-btn" type="button">归档项目</button>
             <button id="detailRestoreBtn" class="ghost-btn" type="button" hidden>恢复项目</button>
           </div>
@@ -718,6 +773,68 @@
         </article>
       </section>
 
+
+      <section id="view-timeline" class="view">
+        <div class="timeline-header">
+          <div>
+            <div class="panel-kicker">RESEARCH TIMELINE</div>
+            <h2>科研时间轴</h2>
+            <p>把工作记录、科研日志和完成任务统一按时间串起来。</p>
+          </div>
+        </div>
+
+        <article class="panel timeline-controls">
+          <div class="timeline-filter-row">
+            <label>项目
+              <select id="timelineProjectFilter"><option value="all">全部项目</option></select>
+            </label>
+            <label>类型
+              <select id="timelineTypeFilter">
+                <option value="all">全部类型</option>
+                <option value="worklog">工作记录</option>
+                <option value="research-log">科研日志</option>
+                <option value="completed-task">完成任务</option>
+              </select>
+            </label>
+            <label>时间范围
+              <select id="timelineRangeFilter">
+                <option value="30">最近 30 天</option>
+                <option value="90">最近 90 天</option>
+                <option value="365">最近一年</option>
+                <option value="all">全部</option>
+              </select>
+            </label>
+          </div>
+        </article>
+
+        <article class="panel timeline-panel">
+          <div class="panel-head">
+            <div><div class="panel-kicker">ACTIVITY</div><h2>研究活动</h2></div>
+            <span id="timelineCount" class="count-pill">0</span>
+          </div>
+          <div id="timelineList" class="timeline-list"></div>
+        </article>
+      </section>
+
+      <section id="view-trash" class="view">
+        <div class="trash-header">
+          <div>
+            <div class="panel-kicker">RECYCLE BIN</div>
+            <h2>回收站</h2>
+            <p>任务、科研日志、项目和工作记录删除后会先进入这里。</p>
+          </div>
+          <button id="emptyTrashBtn" class="danger-outline-btn" type="button">清空回收站</button>
+        </div>
+
+        <article class="panel trash-panel">
+          <div class="panel-head">
+            <div><div class="panel-kicker">DELETED ITEMS</div><h2>已删除内容</h2></div>
+            <span id="trashCount" class="count-pill">0</span>
+          </div>
+          <div id="trashList" class="trash-list"></div>
+        </article>
+      </section>
+
     </main>
   </div>
 
@@ -853,11 +970,11 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=9.0.0"></script>
+  <script src="config.js?v=10.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=9.0.0"></script>
+  <script src="app.js?v=10.0.0"></script>
 </body>
 </html>
