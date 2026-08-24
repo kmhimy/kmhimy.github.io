@@ -1,0 +1,562 @@
+const STORAGE_KEY = "research-desk-v1";
+
+const state = loadState();
+let activeFilter = "all";
+let noteTimer = null;
+
+const els = {
+  navItems: [...document.querySelectorAll(".nav-item")],
+  views: [...document.querySelectorAll(".view")],
+  pageTitle: document.getElementById("pageTitle"),
+  todayEyebrow: document.getElementById("todayEyebrow"),
+  priorityList: document.getElementById("priorityList"),
+  priorityCount: document.getElementById("priorityCount"),
+  priorityForm: document.getElementById("priorityForm"),
+  priorityInput: document.getElementById("priorityInput"),
+  taskList: document.getElementById("taskList"),
+  doneList: document.getElementById("doneList"),
+  doneCount: document.getElementById("doneCount"),
+  openCount: document.getElementById("openCount"),
+  projectCount: document.getElementById("projectCount"),
+  filters: [...document.querySelectorAll(".filter")],
+  quickNote: document.getElementById("quickNote"),
+  noteSaved: document.getElementById("noteSaved"),
+  addTaskTopBtn: document.getElementById("addTaskTopBtn"),
+  addTaskInlineBtn: document.getElementById("addTaskInlineBtn"),
+  taskDialog: document.getElementById("taskDialog"),
+  taskForm: document.getElementById("taskForm"),
+  taskTitle: document.getElementById("taskTitle"),
+  taskCategory: document.getElementById("taskCategory"),
+  taskProject: document.getElementById("taskProject"),
+  taskDue: document.getElementById("taskDue"),
+  saveTaskBtn: document.getElementById("saveTaskBtn"),
+  projectGrid: document.getElementById("projectGrid"),
+  addProjectBtn: document.getElementById("addProjectBtn"),
+  projectDialog: document.getElementById("projectDialog"),
+  projectForm: document.getElementById("projectForm"),
+  projectName: document.getElementById("projectName"),
+  projectDesc: document.getElementById("projectDesc"),
+  projectStatus: document.getElementById("projectStatus"),
+  saveProjectBtn: document.getElementById("saveProjectBtn"),
+  logProject: document.getElementById("logProject"),
+  logForm: document.getElementById("logForm"),
+  logTopic: document.getElementById("logTopic"),
+  logProgress: document.getElementById("logProgress"),
+  logFinding: document.getElementById("logFinding"),
+  logNext: document.getElementById("logNext"),
+  logList: document.getElementById("logList"),
+  weekLabel: document.getElementById("weekLabel"),
+  weekDone: document.getElementById("weekDone"),
+  weekLogs: document.getElementById("weekLogs"),
+  weekProjects: document.getElementById("weekProjects"),
+  weekDoneList: document.getElementById("weekDoneList"),
+  carryList: document.getElementById("carryList"),
+  copyReviewBtn: document.getElementById("copyReviewBtn"),
+  exportBtn: document.getElementById("exportBtn"),
+  importInput: document.getElementById("importInput"),
+  focusModeBtn: document.getElementById("focusModeBtn"),
+  toast: document.getElementById("toast")
+};
+
+init();
+
+function defaultState(){
+  return {
+    priorities: [],
+    tasks: [],
+    projects: [],
+    logs: [],
+    notes: {},
+    settings: { focusMode: false }
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    return {...defaultState(), ...JSON.parse(raw)};
+  }catch(e){
+    console.warn("Could not load saved data", e);
+    return defaultState();
+  }
+}
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function uid(prefix="id"){
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function localDateKey(date = new Date()){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+
+function fmtDate(date = new Date()){
+  return new Intl.DateTimeFormat("en-US",{
+    weekday:"long", month:"long", day:"numeric", year:"numeric"
+  }).format(date);
+}
+
+function shortDate(dateString){
+  if(!dateString) return "";
+  const d = new Date(dateString + "T12:00:00");
+  return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric"}).format(d);
+}
+
+function startOfWeek(date = new Date()){
+  const d = new Date(date);
+  const day = (d.getDay()+6)%7; // Monday = 0
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()-day);
+  return d;
+}
+
+function isThisWeek(iso){
+  const d = new Date(iso);
+  return d >= startOfWeek() && d <= new Date();
+}
+
+function projectName(id){
+  return state.projects.find(p=>p.id===id)?.name || "No project";
+}
+
+function init(){
+  els.todayEyebrow.textContent = fmtDate();
+  els.quickNote.value = state.notes[localDateKey()] || "";
+  bindEvents();
+  renderAll();
+  if(state.settings.focusMode){
+    document.body.classList.add("focus-mode");
+  }
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  }
+}
+
+function bindEvents(){
+  els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
+
+  document.addEventListener("keydown", e=>{
+    if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return;
+    if(e.key==="1") switchView("today");
+    if(e.key==="2") switchView("projects");
+    if(e.key==="3") switchView("log");
+    if(e.key==="4") switchView("review");
+    if(e.key.toLowerCase()==="n") openTaskDialog();
+  });
+
+  els.priorityForm.addEventListener("submit", e=>{
+    e.preventDefault();
+    const title = els.priorityInput.value.trim();
+    if(!title) return;
+    if(todayPriorities().filter(x=>!x.done).length >= 3){
+      toast("Keep today's focus to three open items.");
+      return;
+    }
+    state.priorities.push({
+      id:uid("priority"),
+      title,
+      date:localDateKey(),
+      done:false,
+      completedAt:null
+    });
+    els.priorityInput.value="";
+    saveState(); renderToday();
+  });
+
+  els.addTaskTopBtn.addEventListener("click",openTaskDialog);
+  els.addTaskInlineBtn.addEventListener("click",openTaskDialog);
+
+  els.saveTaskBtn.addEventListener("click", e=>{
+    e.preventDefault();
+    const title=els.taskTitle.value.trim();
+    if(!title){els.taskTitle.focus();return;}
+    state.tasks.push({
+      id:uid("task"),
+      title,
+      category:els.taskCategory.value,
+      projectId:els.taskProject.value || null,
+      due:els.taskDue.value || null,
+      createdAt:new Date().toISOString(),
+      done:false,
+      completedAt:null
+    });
+    saveState();
+    els.taskForm.reset();
+    els.taskDialog.close();
+    renderAll();
+    toast("Task added");
+  });
+
+  els.filters.forEach(btn=>btn.addEventListener("click",()=>{
+    activeFilter=btn.dataset.filter;
+    els.filters.forEach(x=>x.classList.toggle("active",x===btn));
+    renderTasks();
+  }));
+
+  els.quickNote.addEventListener("input",()=>{
+    clearTimeout(noteTimer);
+    noteTimer=setTimeout(()=>{
+      state.notes[localDateKey()]=els.quickNote.value;
+      saveState();
+      els.noteSaved.classList.add("show");
+      setTimeout(()=>els.noteSaved.classList.remove("show"),900);
+    },350);
+  });
+
+  els.addProjectBtn.addEventListener("click",()=>els.projectDialog.showModal());
+
+  els.saveProjectBtn.addEventListener("click", e=>{
+    e.preventDefault();
+    const name=els.projectName.value.trim();
+    if(!name){els.projectName.focus();return;}
+    state.projects.push({
+      id:uid("project"),
+      name,
+      description:els.projectDesc.value.trim(),
+      status:els.projectStatus.value,
+      createdAt:new Date().toISOString()
+    });
+    saveState();
+    els.projectForm.reset();
+    els.projectDialog.close();
+    renderAll();
+    toast("Project created");
+  });
+
+  els.logForm.addEventListener("submit",e=>{
+    e.preventDefault();
+    const topic=els.logTopic.value.trim();
+    if(!topic){els.logTopic.focus();return;}
+    state.logs.unshift({
+      id:uid("log"),
+      projectId:els.logProject.value || null,
+      topic,
+      progress:els.logProgress.value.trim(),
+      finding:els.logFinding.value.trim(),
+      next:els.logNext.value.trim(),
+      createdAt:new Date().toISOString()
+    });
+    els.logForm.reset();
+    saveState(); renderAll(); toast("Research log saved");
+  });
+
+  els.copyReviewBtn.addEventListener("click",async()=>{
+    const text=makeReviewText();
+    try{
+      await navigator.clipboard.writeText(text);
+      toast("Weekly summary copied");
+    }catch{
+      toast("Copy failed — use Export if needed.");
+    }
+  });
+
+  els.exportBtn.addEventListener("click",exportData);
+  els.importInput.addEventListener("change",importData);
+
+  els.focusModeBtn.addEventListener("click",()=>{
+    document.body.classList.toggle("focus-mode");
+    state.settings.focusMode=document.body.classList.contains("focus-mode");
+    saveState();
+  });
+}
+
+function switchView(name){
+  els.navItems.forEach(x=>x.classList.toggle("active",x.dataset.view===name));
+  els.views.forEach(x=>x.classList.toggle("active",x.id===`view-${name}`));
+  const titles={today:"Today",projects:"Projects",log:"Research Log",review:"Weekly Review"};
+  els.pageTitle.textContent=titles[name]||"Research Desk";
+  if(name==="review") renderReview();
+}
+
+function todayPriorities(){
+  return state.priorities.filter(p=>p.date===localDateKey());
+}
+
+function todayDoneTasks(){
+  return state.tasks.filter(t=>t.done && t.completedAt && localDateKey(new Date(t.completedAt))===localDateKey());
+}
+
+function renderAll(){
+  renderToday();
+  renderProjects();
+  renderProjectOptions();
+  renderLogs();
+  renderReview();
+}
+
+function renderToday(){
+  renderPriorities();
+  renderTasks();
+  renderDone();
+  els.doneCount.textContent=todayDoneTasks().length;
+  els.openCount.textContent=state.tasks.filter(t=>!t.done).length;
+  els.projectCount.textContent=state.projects.filter(p=>p.status==="active").length;
+}
+
+function renderPriorities(){
+  const items=todayPriorities();
+  els.priorityCount.textContent=`${items.filter(x=>x.done).length} / 3`;
+  if(!items.length){
+    els.priorityList.innerHTML=`<div class="empty">No focus items yet. Choose no more than three things that would make today meaningful.</div>`;
+    return;
+  }
+  els.priorityList.innerHTML=items.map(p=>`
+    <div class="priority-item">
+      <input class="check" type="checkbox" ${p.done?"checked":""} onchange="togglePriority('${p.id}')">
+      <div class="item-text">
+        <div class="item-title ${p.done?"done":""}">${escapeHtml(p.title)}</div>
+      </div>
+      <button class="delete-btn" onclick="deletePriority('${p.id}')" title="Delete">×</button>
+    </div>`).join("");
+}
+
+function renderTasks(){
+  let items=state.tasks.filter(t=>!t.done);
+  if(activeFilter!=="all") items=items.filter(t=>t.category===activeFilter);
+  items.sort((a,b)=>{
+    if(a.due && b.due) return a.due.localeCompare(b.due);
+    if(a.due) return -1;
+    if(b.due) return 1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+
+  if(!items.length){
+    els.taskList.innerHTML=`<div class="empty">No open tasks here.</div>`;
+    return;
+  }
+  els.taskList.innerHTML=items.map(t=>`
+    <div class="task-item">
+      <input class="check" type="checkbox" onchange="toggleTask('${t.id}', true)">
+      <div class="item-text">
+        <div class="item-title">${escapeHtml(t.title)}</div>
+        <div class="item-meta">
+          <span class="badge ${t.category}">${labelCategory(t.category)}</span>
+          ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
+          ${t.due?`<span>Due ${shortDate(t.due)}</span>`:""}
+        </div>
+      </div>
+      <button class="delete-btn" onclick="deleteTask('${t.id}')" title="Delete">×</button>
+    </div>`).join("");
+}
+
+function renderDone(){
+  const items=todayDoneTasks().sort((a,b)=>b.completedAt.localeCompare(a.completedAt));
+  if(!items.length){
+    els.doneList.innerHTML=`<div class="empty">Nothing completed yet. This section becomes your evidence of progress.</div>`;
+    return;
+  }
+  els.doneList.innerHTML=items.map(t=>`
+    <div class="done-item">
+      <div class="done-icon">✓</div>
+      <div class="item-text">
+        <div class="item-title">${escapeHtml(t.title)}</div>
+        <div class="item-meta">
+          ${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}
+        </div>
+      </div>
+      <button class="delete-btn" onclick="toggleTask('${t.id}', false)" title="Restore">↶</button>
+    </div>`).join("");
+}
+
+function renderProjects(){
+  const items=[...state.projects].sort((a,b)=>a.name.localeCompare(b.name));
+  if(!items.length){
+    els.projectGrid.innerHTML=`<div class="panel empty">Create one project for each real research thread. Keep the list short.</div>`;
+    return;
+  }
+  els.projectGrid.innerHTML=items.map(p=>{
+    const open=state.tasks.filter(t=>t.projectId===p.id&&!t.done).length;
+    const done=state.tasks.filter(t=>t.projectId===p.id&&t.done).length;
+    const logs=state.logs.filter(l=>l.projectId===p.id).length;
+    return `
+      <article class="project-card">
+        <div class="project-top">
+          <div class="status-dot ${p.status}" title="${p.status}"></div>
+          <button class="project-delete" onclick="deleteProject('${p.id}')" title="Delete project">×</button>
+        </div>
+        <h3>${escapeHtml(p.name)}</h3>
+        <p>${escapeHtml(p.description || "No description yet.")}</p>
+        <div class="project-bottom">
+          <span>${open} open · ${done} done</span>
+          <span>${logs} logs</span>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+function renderProjectOptions(){
+  const options=[`<option value="">No project</option>`]
+    .concat(state.projects.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`))
+    .join("");
+  els.taskProject.innerHTML=options;
+  els.logProject.innerHTML=options;
+}
+
+function renderLogs(){
+  if(!state.logs.length){
+    els.logList.innerHTML=`<div class="empty">Your research history will appear here. Keep entries short and factual.</div>`;
+    return;
+  }
+  els.logList.innerHTML=state.logs.slice(0,30).map(l=>`
+    <article class="log-entry">
+      <div class="log-entry-head">
+        <div>
+          <div class="log-entry-title">${escapeHtml(l.topic)}</div>
+          <div class="log-entry-project">${escapeHtml(projectName(l.projectId))}</div>
+        </div>
+        <div class="log-entry-date">${new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(new Date(l.createdAt))}</div>
+      </div>
+      <dl>
+        ${l.progress?`<div><dt>Progress</dt><dd>${escapeHtml(l.progress)}</dd></div>`:""}
+        ${l.finding?`<div><dt>Finding</dt><dd>${escapeHtml(l.finding)}</dd></div>`:""}
+        ${l.next?`<div><dt>Next</dt><dd>${escapeHtml(l.next)}</dd></div>`:""}
+      </dl>
+      <button class="log-delete" onclick="deleteLog('${l.id}')">Delete</button>
+    </article>`).join("");
+}
+
+function renderReview(){
+  const start=startOfWeek();
+  const end=new Date(start); end.setDate(end.getDate()+6);
+  const fmt=new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric"});
+  els.weekLabel.textContent=`${fmt.format(start)} — ${fmt.format(end)}`;
+
+  const done=state.tasks.filter(t=>t.done&&t.completedAt&&isThisWeek(t.completedAt));
+  const logs=state.logs.filter(l=>isThisWeek(l.createdAt));
+  const active=state.projects.filter(p=>p.status==="active");
+  const open=state.tasks.filter(t=>!t.done);
+
+  els.weekDone.textContent=done.length;
+  els.weekLogs.textContent=logs.length;
+  els.weekProjects.textContent=active.length;
+
+  els.weekDoneList.innerHTML=done.length
+    ? done.map(t=>`<div class="done-item"><div class="done-icon">✓</div><div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}</div></div></div>`).join("")
+    : `<div class="empty">Completed tasks from this week will appear here.</div>`;
+
+  els.carryList.innerHTML=open.length
+    ? open.slice(0,12).map(t=>`<div class="task-item"><div class="item-text"><div class="item-title">${escapeHtml(t.title)}</div><div class="item-meta">${t.projectId?`<span>${escapeHtml(projectName(t.projectId))}</span>`:""}</div></div></div>`).join("")
+    : `<div class="empty">No open tasks to carry forward.</div>`;
+}
+
+function makeReviewText(){
+  const done=state.tasks.filter(t=>t.done&&t.completedAt&&isThisWeek(t.completedAt));
+  const logs=state.logs.filter(l=>isThisWeek(l.createdAt));
+  const open=state.tasks.filter(t=>!t.done);
+  const lines=[];
+  lines.push(`WEEKLY REVIEW — ${els.weekLabel.textContent}`);
+  lines.push("");
+  lines.push(`Completed: ${done.length}`);
+  lines.push(`Research logs: ${logs.length}`);
+  lines.push(`Active projects: ${state.projects.filter(p=>p.status==="active").length}`);
+  lines.push("");
+  lines.push("COMPLETED");
+  if(done.length) done.forEach(t=>lines.push(`- ${t.title}${t.projectId?` [${projectName(t.projectId)}]`:""}`));
+  else lines.push("- None recorded");
+  lines.push("");
+  lines.push("CARRY FORWARD");
+  if(open.length) open.slice(0,15).forEach(t=>lines.push(`- ${t.title}${t.projectId?` [${projectName(t.projectId)}]`:""}`));
+  else lines.push("- None");
+  lines.push("");
+  lines.push("RESEARCH FINDINGS");
+  if(logs.length) logs.slice(0,10).forEach(l=>lines.push(`- ${l.topic}${l.finding?`: ${l.finding}`:""}`));
+  else lines.push("- None recorded");
+  return lines.join("\n");
+}
+
+function openTaskDialog(){
+  renderProjectOptions();
+  els.taskDialog.showModal();
+  setTimeout(()=>els.taskTitle.focus(),50);
+}
+
+function labelCategory(c){
+  return ({research:"Research",writing:"Writing",admin:"Admin",other:"Other"})[c]||c;
+}
+
+function togglePriority(id){
+  const p=state.priorities.find(x=>x.id===id);
+  if(!p)return;
+  p.done=!p.done;
+  p.completedAt=p.done?new Date().toISOString():null;
+  saveState(); renderToday();
+}
+function deletePriority(id){
+  state.priorities=state.priorities.filter(x=>x.id!==id);
+  saveState(); renderToday();
+}
+function toggleTask(id,done){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t)return;
+  t.done=done;
+  t.completedAt=done?new Date().toISOString():null;
+  saveState(); renderAll();
+}
+function deleteTask(id){
+  state.tasks=state.tasks.filter(x=>x.id!==id);
+  saveState(); renderAll();
+}
+function deleteProject(id){
+  if(!confirm("Delete this project? Tasks and logs will remain but become unassigned."))return;
+  state.projects=state.projects.filter(x=>x.id!==id);
+  state.tasks.forEach(t=>{if(t.projectId===id)t.projectId=null});
+  state.logs.forEach(l=>{if(l.projectId===id)l.projectId=null});
+  saveState(); renderAll();
+}
+function deleteLog(id){
+  state.logs=state.logs.filter(x=>x.id!==id);
+  saveState(); renderAll();
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`research-desk-${localDateKey()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("Data exported");
+}
+function importData(e){
+  const file=e.target.files?.[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const parsed=JSON.parse(reader.result);
+      Object.assign(state, defaultState(), parsed);
+      saveState(); renderAll();
+      els.quickNote.value=state.notes[localDateKey()]||"";
+      toast("Data imported");
+    }catch{
+      toast("Invalid JSON file");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+}
+function toast(message){
+  els.toast.textContent=message;
+  els.toast.classList.add("show");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>els.toast.classList.remove("show"),1600);
+}
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  })[ch]);
+}
+
+window.togglePriority=togglePriority;
+window.deletePriority=deletePriority;
+window.toggleTask=toggleTask;
+window.deleteTask=deleteTask;
+window.deleteProject=deleteProject;
+window.deleteLog=deleteLog;

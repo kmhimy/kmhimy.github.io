@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f6f8" />
+  <meta name="description" content="A calm personal research dashboard for daily priorities, tasks, projects, logs and weekly reviews." />
+  <title>Research Desk</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-mark">R</div>
+          <div>
+            <div class="brand-title">Research Desk</div>
+            <div class="brand-subtitle">Personal academic workspace</div>
+          </div>
+        </div>
+
+        <nav class="side-nav">
+          <button class="nav-item active" data-view="today">
+            <span>Today</span><span class="nav-key">1</span>
+          </button>
+          <button class="nav-item" data-view="projects">
+            <span>Projects</span><span class="nav-key">2</span>
+          </button>
+          <button class="nav-item" data-view="log">
+            <span>Research Log</span><span class="nav-key">3</span>
+          </button>
+          <button class="nav-item" data-view="review">
+            <span>Weekly Review</span><span class="nav-key">4</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="exportBtn" class="quiet-btn">Export data</button>
+        <label class="quiet-btn file-label">
+          Import data
+          <input id="importInput" type="file" accept=".json,application/json" hidden />
+        </label>
+        <div class="storage-note">Data stays in this browser unless exported.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow" id="todayEyebrow"></div>
+          <h1 id="pageTitle">Today</h1>
+        </div>
+        <div class="top-actions">
+          <button id="focusModeBtn" class="ghost-btn">Focus mode</button>
+          <button id="addTaskTopBtn" class="primary-btn">+ Add task</button>
+        </div>
+      </header>
+
+      <section id="view-today" class="view active">
+        <div class="grid two-thirds">
+          <article class="panel focus-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">TODAY'S FOCUS</div>
+                <h2>Three things that matter most</h2>
+              </div>
+              <span class="count-pill" id="priorityCount">0 / 3</span>
+            </div>
+
+            <div id="priorityList" class="priority-list"></div>
+
+            <form id="priorityForm" class="inline-form">
+              <input id="priorityInput" maxlength="120" placeholder="Add a focus item…" autocomplete="off" />
+              <button>Add</button>
+            </form>
+          </article>
+
+          <article class="panel stat-panel">
+            <div class="panel-kicker">TODAY</div>
+            <div class="big-number" id="doneCount">0</div>
+            <div class="stat-label">tasks completed</div>
+            <div class="stat-divider"></div>
+            <div class="small-stat">
+              <span>Open</span>
+              <strong id="openCount">0</strong>
+            </div>
+            <div class="small-stat">
+              <span>Projects active</span>
+              <strong id="projectCount">0</strong>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid two-thirds lower-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">TASKS</div>
+                <h2>In progress</h2>
+              </div>
+              <div class="filter-row">
+                <button class="filter active" data-filter="all">All</button>
+                <button class="filter" data-filter="research">Research</button>
+                <button class="filter" data-filter="writing">Writing</button>
+                <button class="filter" data-filter="admin">Admin</button>
+              </div>
+            </div>
+            <div id="taskList" class="task-list"></div>
+            <button id="addTaskInlineBtn" class="add-row">+ Add a task</button>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">DONE TODAY</div>
+                <h2>Progress made</h2>
+              </div>
+            </div>
+            <div id="doneList" class="done-list"></div>
+          </article>
+        </div>
+
+        <article class="panel note-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-kicker">QUICK NOTE</div>
+              <h2>Capture before it disappears</h2>
+            </div>
+            <span id="noteSaved" class="saved-indicator">Saved</span>
+          </div>
+          <textarea id="quickNote" placeholder="A derivation idea, a question, a reminder, a result worth keeping…"></textarea>
+        </article>
+      </section>
+
+      <section id="view-projects" class="view">
+        <div class="section-intro">
+          <p>Keep each research thread visible without turning the dashboard into project-management software.</p>
+          <button id="addProjectBtn" class="primary-btn">+ New project</button>
+        </div>
+        <div id="projectGrid" class="project-grid"></div>
+      </section>
+
+      <section id="view-log" class="view">
+        <div class="grid log-grid">
+          <article class="panel">
+            <div class="panel-kicker">NEW ENTRY</div>
+            <h2>Research log</h2>
+            <form id="logForm" class="stack-form">
+              <label>
+                Project
+                <select id="logProject"></select>
+              </label>
+              <label>
+                Question / topic
+                <input id="logTopic" maxlength="160" placeholder="What are you working on?" />
+              </label>
+              <label>
+                Progress
+                <textarea id="logProgress" placeholder="What did you do or verify?"></textarea>
+              </label>
+              <label>
+                Finding
+                <textarea id="logFinding" placeholder="What did you learn, notice, or rule out?"></textarea>
+              </label>
+              <label>
+                Next step
+                <textarea id="logNext" placeholder="What should happen next?"></textarea>
+              </label>
+              <button class="primary-btn" type="submit">Save entry</button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-kicker">ARCHIVE</div>
+                <h2>Recent entries</h2>
+              </div>
+            </div>
+            <div id="logList" class="log-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-review" class="view">
+        <div class="review-hero">
+          <div>
+            <div class="panel-kicker">WEEKLY REVIEW</div>
+            <h2 id="weekLabel">This week</h2>
+            <p>A lightweight summary generated from what you actually recorded.</p>
+          </div>
+          <button id="copyReviewBtn" class="ghost-btn">Copy summary</button>
+        </div>
+
+        <div class="review-stats">
+          <article class="metric-card">
+            <span>Completed</span>
+            <strong id="weekDone">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>Log entries</span>
+            <strong id="weekLogs">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>Active projects</span>
+            <strong id="weekProjects">0</strong>
+          </article>
+        </div>
+
+        <div class="grid two-thirds">
+          <article class="panel">
+            <div class="panel-kicker">COMPLETED</div>
+            <h2>What moved forward</h2>
+            <div id="weekDoneList" class="done-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-kicker">NEXT</div>
+            <h2>Carry forward</h2>
+            <div id="carryList" class="task-list compact"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="taskDialog">
+    <form method="dialog" id="taskForm" class="dialog-card">
+      <div class="dialog-head">
+        <div>
+          <div class="panel-kicker">NEW TASK</div>
+          <h2>Add to your desk</h2>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <label>
+        Task
+        <input id="taskTitle" required maxlength="160" placeholder="What needs to happen?" />
+      </label>
+
+      <div class="form-two">
+        <label>
+          Category
+          <select id="taskCategory">
+            <option value="research">Research</option>
+            <option value="writing">Writing</option>
+            <option value="admin">Admin</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+
+        <label>
+          Project
+          <select id="taskProject"></select>
+        </label>
+      </div>
+
+      <label>
+        Due date
+        <input id="taskDue" type="date" />
+      </label>
+
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="saveTaskBtn" value="default" class="primary-btn">Add task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="projectDialog">
+    <form method="dialog" id="projectForm" class="dialog-card">
+      <div class="dialog-head">
+        <div>
+          <div class="panel-kicker">NEW PROJECT</div>
+          <h2>Create project</h2>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <label>
+        Project name
+        <input id="projectName" required maxlength="120" placeholder="e.g. PRL manuscript" />
+      </label>
+
+      <label>
+        Short description
+        <textarea id="projectDesc" maxlength="320" placeholder="What is this project trying to achieve?"></textarea>
+      </label>
+
+      <label>
+        Status
+        <select id="projectStatus">
+          <option value="active">Active</option>
+          <option value="paused">Paused</option>
+          <option value="idea">Idea</option>
+        </select>
+      </label>
+
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="saveProjectBtn" value="default" class="primary-btn">Create project</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
