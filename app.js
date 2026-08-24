@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 14.11;
+const APP_VERSION = 14.2;
 
 const state = loadState();
 let activeFilter = "all";
@@ -197,6 +197,12 @@ const els = {
   detailStatusBadge: document.getElementById("detailStatusBadge"),
   detailDateMeta: document.getElementById("detailDateMeta"),
   detailProjectName: document.getElementById("detailProjectName"),
+  renameProjectBtn: document.getElementById("renameProjectBtn"),
+  renameProjectDialog: document.getElementById("renameProjectDialog"),
+  renameProjectForm: document.getElementById("renameProjectForm"),
+  renameProjectInput: document.getElementById("renameProjectInput"),
+  renameProjectCloseBtn: document.getElementById("renameProjectCloseBtn"),
+  renameProjectCancelBtn: document.getElementById("renameProjectCancelBtn"),
   detailProjectDesc: document.getElementById("detailProjectDesc"),
   detailProgressNumber: document.getElementById("detailProgressNumber"),
   detailProgressBar: document.getElementById("detailProgressBar"),
@@ -529,6 +535,33 @@ function saveRenamedTask(event){
   toast("任务名称已更新");
 }
 
+
+function openRenameProjectDialog(){
+  const project=state.projects.find(p=>p.id===currentProjectId);
+  if(!project || !els.renameProjectInput || !els.renameProjectDialog) return;
+  els.renameProjectInput.value=project.name||"";
+  els.renameProjectDialog.showModal();
+  setTimeout(()=>{els.renameProjectInput.focus();els.renameProjectInput.select();},0);
+}
+
+function closeRenameProjectDialog(){
+  if(els.renameProjectDialog && els.renameProjectDialog.open) els.renameProjectDialog.close();
+}
+
+function saveRenamedProject(event){
+  event.preventDefault();
+  const project=state.projects.find(p=>p.id===currentProjectId);
+  if(!project || !els.renameProjectInput) return;
+  const name=els.renameProjectInput.value.trim();
+  if(!name){toast("项目名称不能为空");return;}
+  project.name=name;
+  saveState();
+  closeRenameProjectDialog();
+  renderAll();
+  if(currentProjectId) renderProjectDetail();
+  toast("项目名称已更新");
+}
+
 function bindEvents(){
   els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
 
@@ -731,6 +764,10 @@ function bindEvents(){
   });
   els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
+  if(els.renameProjectBtn) els.renameProjectBtn.addEventListener("click",openRenameProjectDialog);
+  if(els.renameProjectCloseBtn) els.renameProjectCloseBtn.addEventListener("click",closeRenameProjectDialog);
+  if(els.renameProjectCancelBtn) els.renameProjectCancelBtn.addEventListener("click",closeRenameProjectDialog);
+  if(els.renameProjectForm) els.renameProjectForm.addEventListener("submit",saveRenamedProject);
   if(els.renameTaskBtn) els.renameTaskBtn.addEventListener("click",openRenameTaskDialog);
   if(els.renameTaskCloseBtn) els.renameTaskCloseBtn.addEventListener("click",closeRenameTaskDialog);
   if(els.renameTaskCancelBtn) els.renameTaskCancelBtn.addEventListener("click",closeRenameTaskDialog);

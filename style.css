@@ -2854,3 +2854,10 @@ button{touch-action:manipulation}
 .task-rename-dialog{width:min(520px,calc(100vw - 32px))}
 .task-rename-dialog .field{margin-top:18px}
 .task-rename-dialog input{font-size:15px}
+
+/* V14.2 — Project title editing */
+.project-detail-title-row{display:flex;align-items:flex-start;gap:10px}
+.project-detail-title-row .detail-project-name{min-width:0;flex:1}
+.project-rename-btn{flex:0 0 auto;margin-top:6px;border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;padding:5px 7px;border-radius:6px}
+.project-rename-btn:hover{background:#eef1f2;color:var(--text)}
+.project-rename-dialog{width:min(520px,calc(100vw - 32px))}
