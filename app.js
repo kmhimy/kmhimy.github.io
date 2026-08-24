@@ -10,6 +10,7 @@ let taskDetailReturnView = "today";
 let archiveExpanded = false;
 let projectSummaryTimer = null;
 let taskDetailsTimer = null;
+let taskNoteMode = localStorage.getItem("research-desk-note-mode") || "split";
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -67,6 +68,11 @@ const els = {
   taskDetailsInput: document.getElementById("taskDetailsInput"),
   taskDetailsPreview: document.getElementById("taskDetailsPreview"),
   taskDetailsSaved: document.getElementById("taskDetailsSaved"),
+  taskNoteWorkspace: document.getElementById("taskNoteWorkspace"),
+  noteModeSplit: document.getElementById("noteModeSplit"),
+  noteModeSource: document.getElementById("noteModeSource"),
+  noteModePreview: document.getElementById("noteModePreview"),
+  noteInsertButtons: [...document.querySelectorAll("[data-note-insert]")],
   taskWorkLogInput: document.getElementById("taskWorkLogInput"),
   taskWorkLogPreview: document.getElementById("taskWorkLogPreview"),
   saveTaskWorkLogBtn: document.getElementById("saveTaskWorkLogBtn"),
@@ -449,17 +455,37 @@ function bindEvents(){
     renderMarkdownInto(els.taskDetailsInput.value,els.taskDetailsPreview);
     clearTimeout(taskDetailsTimer);
     taskDetailsTimer=setTimeout(()=>{
-      const task=state.tasks.find(t=>t.id===currentTaskId);
-      if(!task) return;
-      task.detailsMarkdown=els.taskDetailsInput.value;
-      saveState();
-      els.taskDetailsSaved.classList.add("show");
-      setTimeout(()=>els.taskDetailsSaved.classList.remove("show"),900);
+      saveTaskDetailsNow();
     },350);
   });
 
   els.taskWorkLogInput.addEventListener("input", ()=>{
     renderMarkdownInto(els.taskWorkLogInput.value,els.taskWorkLogPreview);
+  });
+
+  [els.noteModeSplit,els.noteModeSource,els.noteModePreview].forEach(btn=>{
+    btn.addEventListener("click",()=>setTaskNoteMode(btn.dataset.mode));
+  });
+
+  els.noteInsertButtons.forEach(btn=>{
+    btn.addEventListener("click",()=>insertResearchNoteSyntax(btn.dataset.noteInsert));
+  });
+
+  els.taskDetailsInput.addEventListener("keydown",e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){
+      e.preventDefault();
+      saveTaskDetailsNow();
+      toast("科研笔记已保存");
+    }
+
+    if(e.key==="Tab"){
+      e.preventDefault();
+      const ta=els.taskDetailsInput;
+      const start=ta.selectionStart;
+      const end=ta.selectionEnd;
+      ta.setRangeText("  ",start,end,"end");
+      ta.dispatchEvent(new Event("input",{bubbles:true}));
+    }
   });
 
   els.saveTaskWorkLogBtn.addEventListener("click",saveCurrentTaskWorkLog);
@@ -1396,6 +1422,7 @@ function renderTaskDetail(){
 
   els.taskDetailTitle.textContent=task.title;
   els.taskWorkLogCount.textContent=(task.workLogs||[]).length;
+  setTaskNoteMode(taskNoteMode,false);
 
   const meta=[];
   meta.push(`<span class="badge ${task.category}">${labelCategory(task.category)}</span>`);
@@ -1440,6 +1467,75 @@ function renderTaskWorkLogs(task){
   });
 }
 
+
+function saveTaskDetailsNow(){
+  clearTimeout(taskDetailsTimer);
+  const task=state.tasks.find(t=>t.id===currentTaskId);
+  if(!task) return;
+
+  task.detailsMarkdown=els.taskDetailsInput.value;
+  saveState();
+  els.taskDetailsSaved.classList.add("show");
+  setTimeout(()=>els.taskDetailsSaved.classList.remove("show"),900);
+}
+
+function setTaskNoteMode(mode,persist=true){
+  const allowed=["split","source","preview"];
+  if(!allowed.includes(mode)) mode="split";
+
+  taskNoteMode=mode;
+  if(persist) localStorage.setItem("research-desk-note-mode",mode);
+
+  els.taskNoteWorkspace.classList.remove("mode-split","mode-source","mode-preview");
+  els.taskNoteWorkspace.classList.add(`mode-${mode}`);
+
+  [els.noteModeSplit,els.noteModeSource,els.noteModePreview].forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.mode===mode);
+  });
+
+  if(mode==="preview"){
+    renderMarkdownInto(els.taskDetailsInput.value,els.taskDetailsPreview);
+  }
+}
+
+function insertResearchNoteSyntax(type){
+  const textarea=els.taskDetailsInput;
+  if(!textarea) return;
+
+  const start=textarea.selectionStart??textarea.value.length;
+  const end=textarea.selectionEnd??start;
+  const selected=textarea.value.slice(start,end);
+
+  let before="",after="",fallback="";
+  switch(type){
+    case "section":
+      before="\n## ";after="\n";fallback="章节标题";break;
+    case "subsection":
+      before="\n### ";after="\n";fallback="小节标题";break;
+    case "bold":
+      before="**";after="**";fallback="重点内容";break;
+    case "list":
+      before="\n- ";after="\n";fallback="条目";break;
+    case "inline-math":
+      before="$";after="$";fallback="J_{XY}=0";break;
+    case "display-math":
+      before="\n\\[\n";after="\n\\]\n";
+      fallback="J_{XY}=\\sum_m \\frac{g_{1m}g_{2m}}{2}\\left(\\frac{1}{\\Delta_{1m}}+\\frac{1}{\\Delta_{2m}}\\right)";
+      break;
+    case "align":
+      before="\n\\[\n\\begin{aligned}\n";after="\n\\end{aligned}\n\\]\n";
+      fallback="A &= B + C \\\\\nD &= E - F";
+      break;
+    case "code":
+      before="\n```\n";after="\n```\n";fallback="code";break;
+    default:return;
+  }
+
+  textarea.setRangeText(before+(selected||fallback)+after,start,end,"end");
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input",{bubbles:true}));
+}
+
 function saveCurrentTaskWorkLog(){
   const task=state.tasks.find(t=>t.id===currentTaskId);
   if(!task) return;
@@ -1475,6 +1571,7 @@ function deleteTaskWorkLog(taskId,logId){
 
 function renderMarkdownInto(source,target){
   if(!target) return;
+
   const text=String(source||"");
   if(!text.trim()){
     target.innerHTML=`<div class="empty">预览会显示在这里。</div>`;
@@ -1482,33 +1579,129 @@ function renderMarkdownInto(source,target){
   }
 
   try{
-    if(!window.marked||!window.DOMPurify){
+    if(!window.marked||!window.DOMPurify||!window.katex){
       target.textContent=text;
       return;
     }
-    marked.setOptions({gfm:true,breaks:true});
-    const raw=marked.parse(text);
+
+    // Markdown 会把 \( \) 里的反斜杠当成转义符。
+    // 因此先临时保护代码段和数学公式，再解析 Markdown。
+    const protectedResult=protectMarkdownMath(text);
+    const protectedText=protectedResult.text;
+    const mathSegments=protectedResult.mathSegments;
+
+    marked.setOptions({
+      gfm:true,
+      breaks:true
+    });
+
+    const raw=marked.parse(protectedText);
     target.innerHTML=DOMPurify.sanitize(raw);
 
-    const renderMath=()=>{
-      if(window.renderMathInElement&&target.isConnected){
-        renderMathInElement(target,{
-          delimiters:[
-            {left:"$$",right:"$$",display:true},
-            {left:"\\[",right:"\\]",display:true},
-            {left:"\\(",right:"\\)",display:false},
-            {left:"$",right:"$",display:false}
-          ],
-          throwOnError:false
-        });
-      }
-    };
-    if(window.renderMathInElement) renderMath();
-    else setTimeout(renderMath,250);
+    // Markdown 完成后，在 DOM 文本节点中把占位符替换为 KaTeX。
+    replaceMathPlaceholders(target,mathSegments);
+
   }catch(err){
-    console.error("Markdown render error",err);
+    console.error("Markdown/LaTeX render error",err);
     target.textContent=text;
   }
+}
+
+function protectMarkdownMath(source){
+  const codeSegments=[];
+  const mathSegments=[];
+
+  // 先保护 fenced code 和 inline code，避免其中的 $ 被当作公式。
+  let text=source.replace(/```[\s\S]*?```|`[^`\n]*`/g,match=>{
+    const token=`CODEV61TOKEN${codeSegments.length}END`;
+    codeSegments.push(match);
+    return token;
+  });
+
+  function storeMath(tex,display){
+    const token=`MATHV61TOKEN${mathSegments.length}END`;
+    mathSegments.push({tex,display});
+    return token;
+  }
+
+  // 顺序很重要：先匹配 display math，再匹配 inline math。
+  text=text.replace(/\$\$([\s\S]*?)\$\$/g,(m,tex)=>storeMath(tex,true));
+  text=text.replace(/\\\[([\s\S]*?)\\\]/g,(m,tex)=>storeMath(tex,true));
+  text=text.replace(/\\\(([\s\S]*?)\\\)/g,(m,tex)=>storeMath(tex,false));
+
+  // 单美元仅允许单行，避免跨段误匹配；排除 $$。
+  text=text.replace(/(^|[^$])\$([^$\n]+?)\$(?!\$)/g,(m,prefix,tex)=>{
+    return prefix+storeMath(tex,false);
+  });
+
+  // 把代码原文放回去，让 marked 正常生成 code/pre。
+  codeSegments.forEach((code,index)=>{
+    text=text.replace(`CODEV61TOKEN${index}END`,code);
+  });
+
+  return {text,mathSegments};
+}
+
+function replaceMathPlaceholders(root,mathSegments){
+  const tokenRe=/MATHV61TOKEN(\d+)END/g;
+  const walker=document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT
+  );
+
+  const nodes=[];
+  while(walker.nextNode()){
+    const node=walker.currentNode;
+    if(node.nodeValue&&node.nodeValue.includes("MATHV61TOKEN")){
+      nodes.push(node);
+    }
+  }
+
+  nodes.forEach(node=>{
+    const text=node.nodeValue;
+    const frag=document.createDocumentFragment();
+    let lastIndex=0;
+    let match;
+
+    tokenRe.lastIndex=0;
+    while((match=tokenRe.exec(text))!==null){
+      if(match.index>lastIndex){
+        frag.appendChild(document.createTextNode(text.slice(lastIndex,match.index)));
+      }
+
+      const idx=Number(match[1]);
+      const item=mathSegments[idx];
+
+      if(item){
+        const wrapper=document.createElement(item.display?"div":"span");
+        wrapper.className=item.display?"katex-v61-display":"katex-v61-inline";
+
+        try{
+          wrapper.innerHTML=katex.renderToString(item.tex,{
+            displayMode:item.display,
+            throwOnError:false,
+            strict:"ignore",
+            trust:false,
+            output:"htmlAndMathml"
+          });
+        }catch(err){
+          wrapper.textContent=(item.display?"$$":"$")+item.tex+(item.display?"$$":"$");
+        }
+
+        frag.appendChild(wrapper);
+      }else{
+        frag.appendChild(document.createTextNode(match[0]));
+      }
+
+      lastIndex=tokenRe.lastIndex;
+    }
+
+    if(lastIndex<text.length){
+      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    node.replaceWith(frag);
+  });
 }
 
 function insertMarkdownSyntax(targetId,type){

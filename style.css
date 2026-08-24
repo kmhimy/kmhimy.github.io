@@ -601,3 +601,242 @@ body.focus-mode .exit-focus-btn{
   }
   .task-log-count{display:inline-block;margin-right:4px;font-size:34px}
 }
+
+
+/* V6.1: explicit KaTeX wrappers after Markdown parsing */
+.katex-v61-inline{
+  display:inline;
+}
+.katex-v61-display{
+  display:block;
+  overflow-x:auto;
+  overflow-y:hidden;
+  margin:.9em 0;
+  padding:2px 0;
+  text-align:center;
+}
+.katex-v61-display .katex-display{
+  margin:0;
+}
+
+
+/* ==========================================================================
+   V7 — Overleaf-like research note editor
+   ========================================================================== */
+
+.overleaf-panel{
+  margin-top:20px;
+  padding:0;
+  overflow:hidden;
+}
+.overleaf-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+  padding:24px 26px 18px;
+}
+.overleaf-head h2{margin-top:7px}
+.overleaf-subtitle{
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.6;
+}
+.overleaf-head-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.overleaf-saved{
+  opacity:0;
+  min-width:38px;
+}
+.view-mode-switch{
+  display:inline-flex;
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#f5f7f8;
+}
+.mode-btn{
+  min-height:30px;
+  padding:0 10px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#7a838d;
+  font-size:9px;
+  font-weight:600;
+}
+.mode-btn.active{
+  background:#fff;
+  color:#26313b;
+  box-shadow:0 1px 3px rgba(20,24,31,.08);
+}
+
+.overleaf-toolbar{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:46px;
+  padding:7px 14px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  background:#f7f9fa;
+}
+.toolbar-group{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+}
+.overleaf-toolbar button{
+  min-height:29px;
+  padding:0 9px;
+  border:1px solid #dce1e5;
+  border-radius:7px;
+  background:#fff;
+  color:#66717c;
+  font-size:9px;
+  font-weight:600;
+}
+.overleaf-toolbar button:hover{
+  border-color:#b8c3cc;
+  color:#25333e;
+}
+.toolbar-separator{
+  width:1px;
+  height:24px;
+  background:#dfe4e8;
+}
+.toolbar-help{
+  margin-left:auto;
+  color:#9aa2aa;
+  font-size:9px;
+  white-space:nowrap;
+}
+.toolbar-help code{
+  padding:2px 4px;
+  border-radius:4px;
+  background:#eef1f3;
+  color:#68717b;
+}
+
+.overleaf-workspace{
+  display:grid;
+  grid-template-columns:minmax(0,58fr) 1px minmax(0,42fr);
+  min-height:610px;
+  background:#fff;
+}
+.source-pane,
+.render-pane{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+.pane-topbar{
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:0 13px;
+  border-bottom:1px solid var(--line);
+  background:#fbfcfd;
+  color:#7a838d;
+  font-size:9px;
+  font-weight:600;
+}
+.pane-hint{
+  color:#a2a9b0;
+  font-size:8px;
+  font-weight:400;
+}
+.overleaf-divider{
+  background:#dde2e6;
+}
+.overleaf-editor{
+  flex:1;
+  width:100%;
+  min-height:574px;
+  padding:18px 20px 28px;
+  border:0;
+  outline:none;
+  resize:none;
+  background:#fbfcfd;
+  color:#27323b;
+  font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  font-size:12px;
+  line-height:1.78;
+  tab-size:2;
+  caret-color:#1e5a80;
+}
+.overleaf-editor::selection{
+  background:rgba(37,95,132,.16);
+}
+.overleaf-preview{
+  flex:1;
+  min-height:574px;
+  padding:24px 28px 40px;
+  overflow:auto;
+  background:#fff;
+}
+.overleaf-preview h1{font-size:30px}
+.overleaf-preview h2{font-size:24px}
+.overleaf-preview h3{font-size:19px}
+
+/* layout modes */
+.overleaf-workspace.mode-source{
+  grid-template-columns:1fr;
+}
+.overleaf-workspace.mode-source .overleaf-divider,
+.overleaf-workspace.mode-source .render-pane{
+  display:none;
+}
+.overleaf-workspace.mode-preview{
+  grid-template-columns:1fr;
+}
+.overleaf-workspace.mode-preview .overleaf-divider,
+.overleaf-workspace.mode-preview .source-pane{
+  display:none;
+}
+.overleaf-workspace.mode-preview .overleaf-preview{
+  max-width:980px;
+  width:100%;
+  margin:0 auto;
+}
+
+/* Work log visually related but lighter */
+.worklog-composer .markdown-grid{
+  grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);
+}
+.worklog-composer .markdown-editor{
+  min-height:230px;
+}
+.worklog-composer .markdown-preview{
+  min-height:230px;
+}
+
+@media(max-width:1000px){
+  .toolbar-help{display:none}
+}
+@media(max-width:850px){
+  .overleaf-head{
+    flex-direction:column;
+  }
+  .overleaf-head-actions{
+    width:100%;
+    justify-content:space-between;
+  }
+  .overleaf-workspace{
+    grid-template-columns:1fr;
+  }
+  .overleaf-divider{display:none}
+  .render-pane{
+    border-top:1px solid var(--line);
+  }
+  .overleaf-workspace.mode-split .source-pane,
+  .overleaf-workspace.mode-split .render-pane{
+    display:flex;
+  }
+}

@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=6.0.0" />
+  <link rel="stylesheet" href="style.css?v=7.0.0" />
 </head>
 <body>
 
@@ -259,38 +259,62 @@
           </div>
         </article>
 
-        <article class="panel markdown-panel">
-          <div class="panel-head">
+        <article class="panel overleaf-panel">
+          <div class="overleaf-head">
             <div>
-              <div class="panel-kicker">TASK NOTE</div>
-              <h2>任务说明与推导</h2>
+              <div class="panel-kicker">RESEARCH NOTE</div>
+              <h2>科研笔记</h2>
+              <p class="overleaf-subtitle">像 Overleaf 一样：左边写，右边实时看。公式直接用 LaTeX。</p>
             </div>
-            <span id="taskDetailsSaved" class="saved-indicator">已保存</span>
+
+            <div class="overleaf-head-actions">
+              <span id="taskDetailsSaved" class="saved-indicator overleaf-saved">已保存</span>
+              <div class="view-mode-switch" role="group" aria-label="编辑器布局">
+                <button id="noteModeSplit" class="mode-btn active" type="button" data-mode="split">分栏</button>
+                <button id="noteModeSource" class="mode-btn" type="button" data-mode="source">仅编辑</button>
+                <button id="noteModePreview" class="mode-btn" type="button" data-mode="preview">仅预览</button>
+              </div>
+            </div>
           </div>
 
-          <div class="markdown-help">
-            支持 Markdown 与 LaTeX：行内公式 <code>$...$</code>，独立公式 <code>$$...$$</code>。
+          <div class="overleaf-toolbar">
+            <div class="toolbar-group">
+              <button type="button" data-note-insert="section">章节</button>
+              <button type="button" data-note-insert="subsection">小节</button>
+              <button type="button" data-note-insert="bold">加粗</button>
+              <button type="button" data-note-insert="list">列表</button>
+            </div>
+            <div class="toolbar-separator"></div>
+            <div class="toolbar-group">
+              <button type="button" data-note-insert="inline-math">$x$</button>
+              <button type="button" data-note-insert="display-math">公式</button>
+              <button type="button" data-note-insert="align">align</button>
+              <button type="button" data-note-insert="code">代码</button>
+            </div>
+            <div class="toolbar-help">
+              常用：<code>$...$</code>、<code>\(...\)</code>、<code>$$...$$</code>、<code>\[...\]</code>
+            </div>
           </div>
 
-          <div class="markdown-toolbar" data-target="taskDetailsInput">
-            <button type="button" data-md="bold"><strong>B</strong></button>
-            <button type="button" data-md="h2">H2</button>
-            <button type="button" data-md="list">• List</button>
-            <button type="button" data-md="inline-math">$x$</button>
-            <button type="button" data-md="display-math">$$</button>
-            <button type="button" data-md="code">Code</button>
-          </div>
+          <div id="taskNoteWorkspace" class="overleaf-workspace mode-split">
+            <section class="source-pane">
+              <div class="pane-topbar">
+                <span>源码</span>
+                <span class="pane-hint">自动保存 · Ctrl+S 立即保存</span>
+              </div>
+              <textarea id="taskDetailsInput" class="overleaf-editor" spellcheck="false"
+                placeholder="# 目标&#10;&#10;说明这个任务要解决什么。&#10;&#10;## 推导&#10;&#10;\[&#10;H_{\mathrm{eff}} = J(\sigma_1^+\sigma_2^- + \mathrm{H.c.})&#10;\]&#10;&#10;## 当前结论&#10;&#10;- ..."></textarea>
+            </section>
 
-          <div class="markdown-grid">
-            <div class="editor-pane">
-              <div class="pane-label">编辑</div>
-              <textarea id="taskDetailsInput" class="markdown-editor" spellcheck="false"
-                placeholder="# 目标&#10;&#10;说明这个任务要解决什么。&#10;&#10;## 推导&#10;&#10;例如：&#10;$$ H_{\\mathrm{eff}} = J(\\sigma_1^+\\sigma_2^- + \\mathrm{H.c.}) $$&#10;&#10;## 当前结论&#10;&#10;- ..."></textarea>
-            </div>
-            <div class="preview-pane">
-              <div class="pane-label">预览</div>
-              <div id="taskDetailsPreview" class="markdown-preview"></div>
-            </div>
+            <div class="overleaf-divider" aria-hidden="true"></div>
+
+            <section class="render-pane">
+              <div class="pane-topbar">
+                <span>预览</span>
+                <span class="pane-hint">KaTeX 实时渲染</span>
+              </div>
+              <div id="taskDetailsPreview" class="overleaf-preview markdown-preview"></div>
+            </section>
           </div>
         </article>
 
@@ -303,7 +327,7 @@
           </div>
 
           <div class="markdown-help">
-            每次记录一个可复现的进展：做了什么、参数是什么、结果是什么、下一步是什么。
+            每次记录一个可复现的进展：做了什么、参数是什么、结果是什么、下一步是什么。公式可直接使用 LaTeX。
           </div>
 
           <div class="markdown-toolbar" data-target="taskWorkLogInput">
@@ -602,12 +626,11 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=6.0.0"></script>
+  <script src="config.js?v=7.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-  <script src="app.js?v=6.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="app.js?v=7.0.0"></script>
 </body>
 </html>
