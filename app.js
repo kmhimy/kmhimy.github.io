@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 12.1;
+const APP_VERSION = 12.7;
 
 const state = loadState();
 let activeFilter = "all";
@@ -147,6 +147,7 @@ const els = {
 
   todayDateLabel: document.getElementById("todayDateLabel"),
   todayOpeningLine: document.getElementById("todayOpeningLine"),
+  todaySearchBtn: document.getElementById("todaySearchBtn"),
   todayReviewYesterdayBtn: document.getElementById("todayReviewYesterdayBtn"),
   todayFocusBtn: document.getElementById("todayFocusBtn"),
   todayAddTaskBtn: document.getElementById("todayAddTaskBtn"),
@@ -656,6 +657,7 @@ function bindEvents(){
     timelineRangeFilter=els.timelineRangeFilter.value;
     renderTimeline();
   });
+  els.todaySearchBtn.addEventListener("click",openGlobalSearch);
   els.todayAddTaskBtn.addEventListener("click",()=>openTaskDialog());
   els.todayTop3AddBtn.addEventListener("click",addTodayTop3);
   els.todayDailyNoteSaveBtn.addEventListener("click",saveTodayDailyNote);
@@ -1339,6 +1341,8 @@ function updateNoteSplitFromPointer(clientX){
 }
 
 function switchView(name){
+  document.body.classList.toggle("is-today-view",name==="today");
+
   els.navItems.forEach(x=>x.classList.toggle("active",x.dataset.view===name));
   els.views.forEach(x=>x.classList.toggle("active",x.id===`view-${name}`));
 

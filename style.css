@@ -2285,3 +2285,93 @@ body[data-density="compact"] .nav-item{padding-top:9px;padding-bottom:9px}
   #view-today .today-command-header{flex-direction:column}
   #view-today .today-header-actions{width:100%;flex-wrap:wrap}
 }
+
+/* ==========================================================================
+   V12.6 — Remove the global "今日" heading while Today is active.
+   The Today view owns its own date + "今天" header.
+   ========================================================================== */
+
+/* Global app header/title should disappear only on Today. */
+body.is-today-view .main-page-title,
+body.is-today-view .global-page-title,
+body.is-today-view .view-page-title,
+body.is-today-view .content-page-title,
+body.is-today-view #pageTitle,
+body.is-today-view #viewTitle,
+body.is-today-view #mainTitle{
+  display:none!important;
+}
+
+/* Common top header wrappers: hide only when they contain the global title,
+   but keep the Today command header inside #view-today visible. */
+body.is-today-view main > .page-header,
+body.is-today-view .main-content > .page-header,
+body.is-today-view .content-area > .page-header,
+body.is-today-view .workspace-main > .page-header{
+  display:none!important;
+}
+
+/* If the global title is a direct heading immediately before the views. */
+body.is-today-view main > h1,
+body.is-today-view .main-content > h1,
+body.is-today-view .content-area > h1,
+body.is-today-view .workspace-main > h1{
+  display:none!important;
+}
+
+/* Prevent duplicate top action row from the global header on Today.
+   The .today-header-actions remain visible. */
+body.is-today-view main > .top-actions,
+body.is-today-view .main-content > .top-actions,
+body.is-today-view .content-area > .top-actions{
+  display:none!important;
+}
+body.is-today-view #view-today .today-header-actions{
+  display:flex!important;
+}
+
+body.is-today-view .global-today-title-v126{display:none!important}
+
+/* ==========================================================================
+   V12.7 — One action bar on Today
+   ========================================================================== */
+
+/* Today owns its own complete action row:
+   Search / Yesterday / Focus / Add Task */
+body.is-today-view .global-app-header{
+  display:none!important;
+}
+body:not(.is-today-view) .global-app-header{
+  display:flex;
+}
+
+/* The Today action row remains visible and aligned in one row. */
+body.is-today-view #view-today .today-header-actions{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+#todaySearchBtn kbd{
+  margin-left:5px;
+  padding:2px 5px;
+  border:1px solid #d8dee1;
+  border-radius:5px;
+  background:#f4f6f7;
+  color:#8b959c;
+  font-size:8px;
+  font-family:inherit;
+}
+@media(max-width:760px){
+  body.is-today-view #view-today .today-header-actions{
+    justify-content:flex-start;
+  }
+  #todaySearchBtn kbd{display:none}
+}
+
+/* Override earlier broad V12.6 header suppression: outside the identified
+   .global-app-header, Today content is never hidden as a generic page header. */
+body.is-today-view #view-today .today-command-header{
+  display:flex!important;
+}

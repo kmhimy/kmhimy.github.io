@@ -8,9 +8,9 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=12.5.0" />
+  <link rel="stylesheet" href="style.css?v=12.7.0" />
 </head>
-<body>
+<body class="is-today-view">
 
   <section id="authScreen" class="auth-screen">
     <div class="auth-bg" aria-hidden="true"></div>
@@ -161,10 +161,10 @@
     </aside>
 
     <main class="main">
-      <header class="topbar">
+      <header class="topbar global-app-header">
         <div>
           <div class="eyebrow" id="todayEyebrow"></div>
-          <h1 id="pageTitle">今日</h1>
+          <h1 id="pageTitle" class="global-today-title-v126">今日</h1>
         </div>
         <div class="top-actions">
           <button id="globalSearchBtn" class="ghost-btn search-trigger-btn" type="button">
@@ -183,6 +183,9 @@
             <p id="todayOpeningLine">先看清楚昨天做到哪里，再决定今天真正要推进什么。</p>
           </div>
           <div class="today-header-actions">
+            <button id="todaySearchBtn" class="ghost-btn search-trigger-btn" type="button">
+              <span>搜索</span><kbd>Ctrl K</kbd>
+            </button>
             <button id="todayReviewYesterdayBtn" class="ghost-btn" type="button">昨天回顾</button>
             <button id="todayFocusBtn" class="ghost-btn" type="button">专注模式</button>
             <button id="todayAddTaskBtn" class="primary-btn" type="button">+ 添加任务</button>
@@ -1063,12 +1066,12 @@
   </button>
 
   <div id="toast" class="toast"></div>
-<script src="config.js?v=12.5.0"></script>
+<script src="config.js?v=12.7.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=12.5.0"></script>
+  <script src="app.js?v=12.7.0"></script>
 <div id="priorityCount"></div><div id="priorityStat"></div>
   <button id="addTaskInlineBtn" type="button"></button>
   <div id="taskList"></div><div id="doneList"></div>
