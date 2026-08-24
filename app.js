@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 12;
+const APP_VERSION = 12.1;
 
 const state = loadState();
 let activeFilter = "all";
@@ -445,7 +445,7 @@ function initWorkspace(){
   cleanupOldOfflineCache();
 
   els.todayEyebrow.textContent = fmtDate();
-  els.quickNote.value = state.notes[localDateKey()] || "";
+  if(els.quickNote) els.quickNote.value = state.notes[localDateKey()] || "";
 
   if(sidebarCollapsed){
     document.body.classList.add("sidebar-collapsed");
@@ -1146,7 +1146,7 @@ function applyCloudState(cloudData){
     Object.assign(state, restored);
 
     saveState({touch:false,cloud:false});
-    els.quickNote.value = state.notes[localDateKey()] || "";
+    if(els.quickNote) els.quickNote.value = state.notes[localDateKey()] || "";
     applyAppearanceSettings();
     renderAll();
 
@@ -3963,7 +3963,7 @@ function importData(e){
       Object.assign(state, restored);
 
       saveState();
-      els.quickNote.value=state.notes[localDateKey()] || "";
+      if(els.quickNote) els.quickNote.value=state.notes[localDateKey()] || "";
       renderAll();
       toast("数据已导入");
     }catch(err){

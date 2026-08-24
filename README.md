@@ -95,3 +95,17 @@ V10 的任务关联、资源、时间轴、回收站、LaTeX、日历、外观�
 - 专注模式：只保留“今日三件事”，右上角始终保留“退出专注”，Esc 也可退出
 
 V12 使用现有本地 / Supabase state 数据结构，不需要新增 SQL 表。
+
+
+## V12.1 初始化修复
+
+修复 V12 首次加载时出现：
+
+`Cannot set properties of null (setting 'value')`
+
+原因是旧版 Today 兼容 DOM 在 `app.js` 执行之后才被浏览器解析。
+
+V12.1：
+- 将兼容 DOM 移至 app.js 之前
+- 对旧 quickNote 初始化增加空值保护
+- 静态资源版本统一升级为 12.1.0，避免浏览器继续使用旧缓存

@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=12.0.0" />
+  <link rel="stylesheet" href="style.css?v=12.1.0" />
 </head>
 <body>
 
@@ -1043,16 +1043,17 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=11.0.0"></script>
+  <div id="v12LegacyTodayCompat" hidden aria-hidden="true">
+    <form id="priorityForm"><input id="priorityInput"><button type="submit"></button></form>
+    <div id="priorityList"></div>
+
+  <script src="config.js?v=12.1.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=12.0.0"></script>
-
-<div id="v12LegacyTodayCompat" hidden aria-hidden="true">
-  <form id="priorityForm"><input id="priorityInput"><button type="submit"></button></form>
-  <div id="priorityList"></div><div id="priorityCount"></div><div id="priorityStat"></div>
+  <script src="app.js?v=12.1.0"></script>
+<div id="priorityCount"></div><div id="priorityStat"></div>
   <button id="addTaskInlineBtn" type="button"></button>
   <div id="taskList"></div><div id="doneList"></div>
   <div id="doneCount"></div><div id="openCount"></div><div id="projectCount"></div>
