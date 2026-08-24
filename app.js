@@ -1,5 +1,5 @@
 const STORAGE_KEY = "research-desk-v1";
-const APP_VERSION = 6;
+const APP_VERSION = 8;
 
 const state = loadState();
 let activeFilter = "all";
@@ -16,6 +16,8 @@ let noteSourcePercent = Number(localStorage.getItem("research-desk-note-source-p
 if(!Number.isFinite(noteSourcePercent)) noteSourcePercent=58;
 noteSourcePercent=Math.min(78,Math.max(28,noteSourcePercent));
 let splitDragging=false;
+let calendarCursor=new Date();
+calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -85,6 +87,21 @@ const els = {
   saveTaskWorkLogBtn: document.getElementById("saveTaskWorkLogBtn"),
   taskWorkLogList: document.getElementById("taskWorkLogList"),
   markdownToolbars: [...document.querySelectorAll(".markdown-toolbar")],
+
+  calendarMonthLabel: document.getElementById("calendarMonthLabel"),
+  calendarGrid: document.getElementById("calendarGrid"),
+  calendarPrevBtn: document.getElementById("calendarPrevBtn"),
+  calendarTodayBtn: document.getElementById("calendarTodayBtn"),
+  calendarNextBtn: document.getElementById("calendarNextBtn"),
+  upcomingDeadlineCount: document.getElementById("upcomingDeadlineCount"),
+  upcomingDeadlineList: document.getElementById("upcomingDeadlineList"),
+  overdueDeadlineCount: document.getElementById("overdueDeadlineCount"),
+  overdueDeadlineList: document.getElementById("overdueDeadlineList"),
+
+  appearanceResetBtn: document.getElementById("appearanceResetBtn"),
+  themeOptionBtns: [...document.querySelectorAll("[data-theme-option]")],
+  fontOptionBtns: [...document.querySelectorAll("[data-font-option]")],
+  densityOptionBtns: [...document.querySelectorAll("[data-density-option]")],
 
   projectGrid: document.getElementById("projectGrid"),
   archiveGrid: document.getElementById("archiveGrid"),
@@ -172,7 +189,14 @@ function defaultState(){
     projects: [],
     logs: [],
     notes: {},
-    settings: { focusMode: false },
+    settings: {
+      focusMode:false,
+      appearance:{
+        theme:"academic",
+        font:"mixed",
+        density:"comfortable"
+      }
+    },
     meta: { localUpdatedAt: null }
   };
 }
@@ -197,6 +221,18 @@ function migrateToV2(s){
   if(!Array.isArray(s.logs)) s.logs = [];
   if(!s.notes || typeof s.notes !== "object") s.notes = {};
   if(!s.settings || typeof s.settings !== "object") s.settings = {focusMode:false};
+  if(!s.settings.appearance || typeof s.settings.appearance !== "object"){
+    s.settings.appearance={theme:"academic",font:"mixed",density:"comfortable"};
+  }
+  if(!["academic","paper","forest","graphite"].includes(s.settings.appearance.theme)){
+    s.settings.appearance.theme="academic";
+  }
+  if(!["mixed","sans","serif","system"].includes(s.settings.appearance.font)){
+    s.settings.appearance.font="mixed";
+  }
+  if(!["comfortable","compact"].includes(s.settings.appearance.density)){
+    s.settings.appearance.density="comfortable";
+  }
   if(!s.meta || typeof s.meta !== "object") s.meta = {localUpdatedAt:null};
   if(!("localUpdatedAt" in s.meta)) s.meta.localUpdatedAt = null;
 
@@ -323,6 +359,7 @@ function initWorkspace(){
   }
   updateSidebarCollapseButton();
   applyNoteSplitPercent(noteSourcePercent,false);
+  applyAppearanceSettings();
 
   bindEvents();
   renderAll();
@@ -354,6 +391,31 @@ function bindEvents(){
   els.noteSplitHandle.addEventListener("dblclick",()=>{
     applyNoteSplitPercent(58,true);
   });
+  els.calendarPrevBtn.addEventListener("click",()=>{
+    calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);
+    renderCalendar();
+  });
+  els.calendarNextBtn.addEventListener("click",()=>{
+    calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);
+    renderCalendar();
+  });
+  els.calendarTodayBtn.addEventListener("click",()=>{
+    const now=new Date();
+    calendarCursor=new Date(now.getFullYear(),now.getMonth(),1);
+    renderCalendar();
+  });
+
+  els.themeOptionBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>setAppearanceOption("theme",btn.dataset.themeOption));
+  });
+  els.fontOptionBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>setAppearanceOption("font",btn.dataset.fontOption));
+  });
+  els.densityOptionBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>setAppearanceOption("density",btn.dataset.densityOption));
+  });
+  els.appearanceResetBtn.addEventListener("click",resetAppearanceSettings);
+
   els.noteSplitHandle.addEventListener("keydown",e=>{
     if(e.key==="ArrowLeft"){
       e.preventDefault();
@@ -384,6 +446,8 @@ function bindEvents(){
     if(e.key==="2") switchView("projects");
     if(e.key==="3") switchView("log");
     if(e.key==="4") switchView("review");
+    if(e.key==="5") switchView("calendar");
+    if(e.key==="6") switchView("appearance");
     if(e.key.toLowerCase()==="n") openTaskDialog();
   });
 
@@ -910,6 +974,7 @@ function applyCloudState(cloudData){
 
     saveState({touch:false,cloud:false});
     els.quickNote.value = state.notes[localDateKey()] || "";
+    applyAppearanceSettings();
     renderAll();
 
     if(state.settings.focusMode){
@@ -1173,11 +1238,184 @@ function switchView(name){
     "project-detail":"项目详情",
     "task-detail":"任务详情",
     log:"科研日志",
-    review:"本周总结"
+    review:"本周总结",
+    calendar:"日历",
+    appearance:"外观"
   };
   els.pageTitle.textContent=titles[name] || "科研工作台";
 
   if(name==="review") renderReview();
+  if(name==="calendar") renderCalendar();
+  if(name==="appearance") renderAppearanceControls();
+}
+
+
+// ============================================================================
+// V8 — Calendar / Deadlines
+// ============================================================================
+
+function renderCalendar(){
+  if(!els.calendarGrid) return;
+
+  const year=calendarCursor.getFullYear();
+  const month=calendarCursor.getMonth();
+  els.calendarMonthLabel.textContent=`${year}年${month+1}月`;
+
+  const first=new Date(year,month,1);
+  const mondayOffset=(first.getDay()+6)%7;
+  const gridStart=new Date(year,month,1-mondayOffset);
+
+  const todayKey=localDateKey();
+  const html=[];
+
+  for(let i=0;i<42;i++){
+    const d=new Date(gridStart);
+    d.setDate(gridStart.getDate()+i);
+    const key=localDateKey(d);
+    const inMonth=d.getMonth()===month;
+    const tasks=state.tasks
+      .filter(t=>t.due===key)
+      .sort((a,b)=>Number(a.done)-Number(b.done) || (a.createdAt||"").localeCompare(b.createdAt||""));
+
+    const visible=tasks.slice(0,4);
+    const more=tasks.length-visible.length;
+
+    html.push(`
+      <div class="calendar-day ${inMonth?"":"other-month"} ${key===todayKey?"today":""}">
+        <div class="calendar-day-head">
+          <span class="calendar-day-number">${d.getDate()}</span>
+          <button class="calendar-add-btn" type="button" onclick="openTaskDialogWithDue('${key}')" title="添加 ${key} 截止任务">+</button>
+        </div>
+        <div class="calendar-day-tasks">
+          ${visible.map(t=>`
+            <button class="calendar-task ${t.category} ${t.done?"done":""}" type="button"
+              onclick="openTaskDetail('${t.id}','calendar')" title="${escapeAttr(t.title)}">
+              ${escapeHtml(t.title)}
+            </button>
+          `).join("")}
+          ${more>0?`<div class="calendar-more">+ ${more} 项</div>`:""}
+        </div>
+      </div>
+    `);
+  }
+
+  els.calendarGrid.innerHTML=html.join("");
+  renderDeadlinePanels();
+}
+
+function renderDeadlinePanels(){
+  const today=localDateKey();
+  const todayDate=new Date(`${today}T00:00:00`);
+  const futureLimit=new Date(todayDate);
+  futureLimit.setDate(futureLimit.getDate()+30);
+  const futureKey=localDateKey(futureLimit);
+
+  const activeTasks=state.tasks.filter(t=>{
+    if(!t.due || t.done) return false;
+    const p=t.projectId?state.projects.find(x=>x.id===t.projectId):null;
+    return !p || p.status!=="archived";
+  });
+
+  const overdue=activeTasks
+    .filter(t=>t.due<today)
+    .sort((a,b)=>a.due.localeCompare(b.due));
+
+  const upcoming=activeTasks
+    .filter(t=>t.due>=today && t.due<=futureKey)
+    .sort((a,b)=>a.due.localeCompare(b.due));
+
+  els.overdueDeadlineCount.textContent=overdue.length;
+  els.upcomingDeadlineCount.textContent=upcoming.length;
+
+  els.overdueDeadlineList.innerHTML=deadlineListHtml(overdue,"目前没有逾期任务。");
+  els.upcomingDeadlineList.innerHTML=deadlineListHtml(upcoming,"未来 30 天暂时没有截止任务。");
+}
+
+function deadlineListHtml(tasks,emptyText){
+  if(!tasks.length) return `<div class="empty">${emptyText}</div>`;
+
+  return tasks.slice(0,20).map(t=>{
+    const d=new Date(`${t.due}T12:00:00`);
+    const month=new Intl.DateTimeFormat("zh-CN",{month:"numeric"}).format(d).replace("月","");
+    const day=d.getDate();
+
+    return `
+      <div class="deadline-row">
+        <div class="deadline-date">
+          <strong>${day}</strong>
+          <span>${month}月</span>
+        </div>
+        <div class="deadline-info">
+          <button class="deadline-title" type="button" onclick="openTaskDetail('${t.id}','calendar')">${escapeHtml(t.title)}</button>
+          <div class="deadline-meta">
+            ${t.projectId?escapeHtml(projectName(t.projectId)):"未归属项目"} · ${labelCategory(t.category)}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function openTaskDialogWithDue(dateKey){
+  openTaskDialog();
+  els.taskDue.value=dateKey;
+}
+
+// ============================================================================
+// V8 — Appearance
+// ============================================================================
+
+function appearanceDefaults(){
+  return {theme:"academic",font:"mixed",density:"comfortable"};
+}
+
+function getAppearance(){
+  if(!state.settings.appearance){
+    state.settings.appearance=appearanceDefaults();
+  }
+  return state.settings.appearance;
+}
+
+function applyAppearanceSettings(){
+  const a=getAppearance();
+
+  document.body.dataset.theme=a.theme||"academic";
+  document.body.dataset.font=a.font||"mixed";
+  document.body.dataset.density=a.density||"comfortable";
+
+  renderAppearanceControls();
+}
+
+function renderAppearanceControls(){
+  if(!els.themeOptionBtns?.length) return;
+
+  const a=getAppearance();
+  els.themeOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.themeOption===a.theme));
+  els.fontOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.fontOption===a.font));
+  els.densityOptionBtns.forEach(btn=>btn.classList.toggle("active",btn.dataset.densityOption===a.density));
+}
+
+function setAppearanceOption(kind,value){
+  const a=getAppearance();
+
+  const allowed={
+    theme:["academic","paper","forest","graphite"],
+    font:["mixed","sans","serif","system"],
+    density:["comfortable","compact"]
+  };
+
+  if(!allowed[kind]?.includes(value)) return;
+  a[kind]=value;
+  applyAppearanceSettings();
+  saveState();
+  toast("外观设置已保存");
+}
+
+function resetAppearanceSettings(){
+  state.settings.appearance=appearanceDefaults();
+  applyAppearanceSettings();
+  saveState();
+  toast("已恢复默认外观");
 }
 
 function todayPriorityTasks(){
@@ -1198,6 +1436,8 @@ function renderAll(){
   renderProjectOptions();
   renderLogs();
   renderReview();
+  renderCalendar();
+  renderAppearanceControls();
   if(currentProjectId) renderProjectDetail();
   if(currentTaskId) renderTaskDetail();
 }
@@ -2097,6 +2337,7 @@ function escapeHtml(value){
   })[ch]);
 }
 
+window.openTaskDialogWithDue=openTaskDialogWithDue;
 window.openTaskDetail=openTaskDetail;
 window.deleteTaskWorkLog=deleteTaskWorkLog;
 window.openProjectDetail=openProjectDetail;

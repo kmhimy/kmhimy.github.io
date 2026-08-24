@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=7.1.0" />
+  <link rel="stylesheet" href="style.css?v=8.0.0" />
 </head>
 <body>
 
@@ -121,6 +121,12 @@
           </button>
           <button class="nav-item" data-view="review" data-collapse-label="本周总结" type="button">
             <span class="nav-main"><span class="nav-symbol">周</span><span class="nav-label">本周总结</span></span><span class="nav-key">4</span>
+          </button>
+          <button class="nav-item" data-view="calendar" data-collapse-label="日历" type="button">
+            <span class="nav-main"><span class="nav-symbol">日</span><span class="nav-label">日历</span></span><span class="nav-key">5</span>
+          </button>
+          <button class="nav-item" data-view="appearance" data-collapse-label="外观" type="button">
+            <span class="nav-main"><span class="nav-symbol">风</span><span class="nav-label">外观</span></span><span class="nav-key">6</span>
           </button>
         </nav>
       </div>
@@ -536,6 +542,156 @@
           </article>
         </div>
       </section>
+
+      <section id="view-calendar" class="view">
+        <div class="calendar-toolbar">
+          <div>
+            <div class="panel-kicker">CALENDAR & DEADLINES</div>
+            <h2 id="calendarMonthLabel" class="calendar-month-title">日历</h2>
+          </div>
+          <div class="calendar-actions">
+            <button id="calendarPrevBtn" class="ghost-btn compact-btn" type="button">← 上月</button>
+            <button id="calendarTodayBtn" class="ghost-btn compact-btn" type="button">今天</button>
+            <button id="calendarNextBtn" class="ghost-btn compact-btn" type="button">下月 →</button>
+          </div>
+        </div>
+
+        <div class="calendar-layout">
+          <article class="panel calendar-panel">
+            <div class="calendar-weekdays">
+              <div>周一</div><div>周二</div><div>周三</div><div>周四</div>
+              <div>周五</div><div>周六</div><div>周日</div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </article>
+
+          <aside class="calendar-side">
+            <article class="panel deadline-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-kicker">UPCOMING</div>
+                  <h2>近期截止</h2>
+                </div>
+                <span id="upcomingDeadlineCount" class="count-pill">0</span>
+              </div>
+              <div id="upcomingDeadlineList" class="deadline-list"></div>
+            </article>
+
+            <article class="panel deadline-panel overdue-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-kicker">OVERDUE</div>
+                  <h2>已逾期</h2>
+                </div>
+                <span id="overdueDeadlineCount" class="count-pill">0</span>
+              </div>
+              <div id="overdueDeadlineList" class="deadline-list"></div>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-appearance" class="view">
+        <div class="appearance-intro">
+          <div>
+            <div class="panel-kicker">APPEARANCE</div>
+            <h2>字体与界面风格</h2>
+            <p>这些设置会保存到你的科研工作台，并随云同步带到其他设备。</p>
+          </div>
+          <button id="appearanceResetBtn" class="ghost-btn" type="button">恢复默认</button>
+        </div>
+
+        <article class="panel appearance-section">
+          <div class="panel-kicker">STYLE</div>
+          <h2>页面风格</h2>
+          <div id="themeOptions" class="appearance-options theme-options">
+            <button class="appearance-card theme-card" type="button" data-theme-option="academic">
+              <span class="theme-preview theme-academic-preview">
+                <span></span><i></i><b></b>
+              </span>
+              <strong>经典学术</strong>
+              <small>深色侧栏、蓝色强调、圆角卡片</small>
+            </button>
+
+            <button class="appearance-card theme-card" type="button" data-theme-option="paper">
+              <span class="theme-preview theme-paper-preview">
+                <span></span><i></i><b></b>
+              </span>
+              <strong>纸张极简</strong>
+              <small>浅色侧栏、低对比、适合长时间阅读</small>
+            </button>
+
+            <button class="appearance-card theme-card" type="button" data-theme-option="forest">
+              <span class="theme-preview theme-forest-preview">
+                <span></span><i></i><b></b>
+              </span>
+              <strong>墨绿科研</strong>
+              <small>暖白背景、墨绿色强调</small>
+            </button>
+
+            <button class="appearance-card theme-card" type="button" data-theme-option="graphite">
+              <span class="theme-preview theme-graphite-preview">
+                <span></span><i></i><b></b>
+              </span>
+              <strong>石墨简洁</strong>
+              <small>中性灰、弱圆角、更接近工具软件</small>
+            </button>
+          </div>
+        </article>
+
+        <article class="panel appearance-section">
+          <div class="panel-kicker">TYPOGRAPHY</div>
+          <h2>字体方案</h2>
+          <div id="fontOptions" class="appearance-options font-options">
+            <button class="appearance-card font-card" type="button" data-font-option="mixed">
+              <span class="font-sample font-mixed-sample">科研笔记 Aa</span>
+              <strong>中英混排</strong>
+              <small>正文无衬线，标题衬线；当前默认</small>
+            </button>
+
+            <button class="appearance-card font-card" type="button" data-font-option="sans">
+              <span class="font-sample font-sans-sample">科研笔记 Aa</span>
+              <strong>现代无衬线</strong>
+              <small>界面更清晰、紧凑</small>
+            </button>
+
+            <button class="appearance-card font-card" type="button" data-font-option="serif">
+              <span class="font-sample font-serif-sample">科研笔记 Aa</span>
+              <strong>学术宋体</strong>
+              <small>正文与标题都偏论文阅读感</small>
+            </button>
+
+            <button class="appearance-card font-card" type="button" data-font-option="system">
+              <span class="font-sample font-system-sample">科研笔记 Aa</span>
+              <strong>系统字体</strong>
+              <small>优先使用电脑系统默认中文字体</small>
+            </button>
+          </div>
+        </article>
+
+        <article class="panel appearance-section">
+          <div class="panel-kicker">DENSITY</div>
+          <h2>页面密度</h2>
+          <div id="densityOptions" class="segmented-setting">
+            <button type="button" data-density-option="comfortable">舒展</button>
+            <button type="button" data-density-option="compact">紧凑</button>
+          </div>
+          <p class="setting-help">“紧凑”会减少卡片留白和列表间距，适合小屏幕或信息量较多时使用。</p>
+        </article>
+
+        <article class="panel appearance-demo">
+          <div class="panel-kicker">PREVIEW</div>
+          <h2>效果预览</h2>
+          <div class="appearance-demo-card">
+            <div>
+              <strong>暗空间动力学</strong>
+              <p>检查完整闭合条件与 transmission rank 的关系。</p>
+            </div>
+            <span class="badge research">科研</span>
+          </div>
+        </article>
+      </section>
+
     </main>
   </div>
 
@@ -633,11 +789,11 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=7.1.0"></script>
+  <script src="config.js?v=8.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=7.1.0"></script>
+  <script src="app.js?v=8.0.0"></script>
 </body>
 </html>
