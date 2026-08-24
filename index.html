@@ -8,7 +8,7 @@
   <title>科研工作台</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <link rel="stylesheet" href="style.css?v=7.0.0" />
+  <link rel="stylesheet" href="style.css?v=7.1.0" />
 </head>
 <body>
 
@@ -100,24 +100,27 @@
       <div>
         <div class="brand">
           <div class="brand-mark">R</div>
-          <div>
+          <div class="brand-copy">
             <div class="brand-title">科研工作台</div>
             <div class="brand-subtitle">个人科研与任务管理</div>
           </div>
+          <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" type="button" title="折叠侧边栏" aria-label="折叠侧边栏">
+            <span class="collapse-glyph">‹</span>
+          </button>
         </div>
 
         <nav class="side-nav">
-          <button class="nav-item active" data-view="today" type="button">
-            <span>今日</span><span class="nav-key">1</span>
+          <button class="nav-item active" data-view="today" data-collapse-label="今日" type="button">
+            <span class="nav-main"><span class="nav-symbol">今</span><span class="nav-label">今日</span></span><span class="nav-key">1</span>
           </button>
-          <button class="nav-item" data-view="projects" type="button">
-            <span>科研项目</span><span class="nav-key">2</span>
+          <button class="nav-item" data-view="projects" data-collapse-label="科研项目" type="button">
+            <span class="nav-main"><span class="nav-symbol">项</span><span class="nav-label">科研项目</span></span><span class="nav-key">2</span>
           </button>
-          <button class="nav-item" data-view="log" type="button">
-            <span>科研日志</span><span class="nav-key">3</span>
+          <button class="nav-item" data-view="log" data-collapse-label="科研日志" type="button">
+            <span class="nav-main"><span class="nav-symbol">志</span><span class="nav-label">科研日志</span></span><span class="nav-key">3</span>
           </button>
-          <button class="nav-item" data-view="review" type="button">
-            <span>本周总结</span><span class="nav-key">4</span>
+          <button class="nav-item" data-view="review" data-collapse-label="本周总结" type="button">
+            <span class="nav-main"><span class="nav-symbol">周</span><span class="nav-label">本周总结</span></span><span class="nav-key">4</span>
           </button>
         </nav>
       </div>
@@ -306,7 +309,11 @@
                 placeholder="# 目标&#10;&#10;说明这个任务要解决什么。&#10;&#10;## 推导&#10;&#10;\[&#10;H_{\mathrm{eff}} = J(\sigma_1^+\sigma_2^- + \mathrm{H.c.})&#10;\]&#10;&#10;## 当前结论&#10;&#10;- ..."></textarea>
             </section>
 
-            <div class="overleaf-divider" aria-hidden="true"></div>
+            <div id="noteSplitHandle" class="overleaf-divider note-split-handle"
+         role="separator" aria-orientation="vertical" aria-label="调整源码和预览宽度"
+         tabindex="0">
+      <span class="split-grip" aria-hidden="true"></span>
+    </div>
 
             <section class="render-pane">
               <div class="pane-topbar">
@@ -626,11 +633,11 @@
   </button>
 
   <div id="toast" class="toast"></div>
-  <script src="config.js?v=7.0.0"></script>
+  <script src="config.js?v=7.1.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="app.js?v=7.0.0"></script>
+  <script src="app.js?v=7.1.0"></script>
 </body>
 </html>

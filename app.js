@@ -11,6 +11,11 @@ let archiveExpanded = false;
 let projectSummaryTimer = null;
 let taskDetailsTimer = null;
 let taskNoteMode = localStorage.getItem("research-desk-note-mode") || "split";
+let sidebarCollapsed = localStorage.getItem("research-desk-sidebar-collapsed")==="true";
+let noteSourcePercent = Number(localStorage.getItem("research-desk-note-source-pct") || "58");
+if(!Number.isFinite(noteSourcePercent)) noteSourcePercent=58;
+noteSourcePercent=Math.min(78,Math.max(28,noteSourcePercent));
+let splitDragging=false;
 
 // ---- Supabase / cloud sync state ----
 const CLOUD_TABLE = "research_desk_state";
@@ -27,6 +32,7 @@ let cloudPollTimer = null;
 const els = {
   navItems: [...document.querySelectorAll(".nav-item")],
   views: [...document.querySelectorAll(".view")],
+  sidebarCollapseBtn: document.getElementById("sidebarCollapseBtn"),
   pageTitle: document.getElementById("pageTitle"),
   todayEyebrow: document.getElementById("todayEyebrow"),
 
@@ -69,6 +75,7 @@ const els = {
   taskDetailsPreview: document.getElementById("taskDetailsPreview"),
   taskDetailsSaved: document.getElementById("taskDetailsSaved"),
   taskNoteWorkspace: document.getElementById("taskNoteWorkspace"),
+  noteSplitHandle: document.getElementById("noteSplitHandle"),
   noteModeSplit: document.getElementById("noteModeSplit"),
   noteModeSource: document.getElementById("noteModeSource"),
   noteModePreview: document.getElementById("noteModePreview"),
@@ -310,6 +317,13 @@ function initWorkspace(){
 
   els.todayEyebrow.textContent = fmtDate();
   els.quickNote.value = state.notes[localDateKey()] || "";
+
+  if(sidebarCollapsed){
+    document.body.classList.add("sidebar-collapsed");
+  }
+  updateSidebarCollapseButton();
+  applyNoteSplitPercent(noteSourcePercent,false);
+
   bindEvents();
   renderAll();
 
@@ -333,6 +347,31 @@ function cleanupOldOfflineCache(){
 
 function bindEvents(){
   els.navItems.forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
+
+  els.sidebarCollapseBtn.addEventListener("click",toggleSidebarCollapse);
+
+  els.noteSplitHandle.addEventListener("pointerdown",startNoteSplitDrag);
+  els.noteSplitHandle.addEventListener("dblclick",()=>{
+    applyNoteSplitPercent(58,true);
+  });
+  els.noteSplitHandle.addEventListener("keydown",e=>{
+    if(e.key==="ArrowLeft"){
+      e.preventDefault();
+      applyNoteSplitPercent(noteSourcePercent-2,true);
+    }
+    if(e.key==="ArrowRight"){
+      e.preventDefault();
+      applyNoteSplitPercent(noteSourcePercent+2,true);
+    }
+    if(e.key==="Home"){
+      e.preventDefault();
+      applyNoteSplitPercent(28,true);
+    }
+    if(e.key==="End"){
+      e.preventDefault();
+      applyNoteSplitPercent(78,true);
+    }
+  });
 
   document.addEventListener("keydown", e=>{
     if(e.key==="Escape" && document.body.classList.contains("focus-mode")){
@@ -1047,6 +1086,83 @@ function exitFocusMode(){
   saveState();
 }
 
+
+// ============================================================================
+// V7.1 — sidebar collapse + resizable source/preview
+// ============================================================================
+
+function toggleSidebarCollapse(){
+  sidebarCollapsed=!document.body.classList.contains("sidebar-collapsed");
+  document.body.classList.toggle("sidebar-collapsed",sidebarCollapsed);
+  localStorage.setItem("research-desk-sidebar-collapsed",String(sidebarCollapsed));
+  updateSidebarCollapseButton();
+
+  // Let editor recalculate after CSS grid transition.
+  setTimeout(()=>{
+    if(currentTaskId && taskNoteMode==="preview"){
+      renderMarkdownInto(els.taskDetailsInput.value,els.taskDetailsPreview);
+    }
+  },220);
+}
+
+function updateSidebarCollapseButton(){
+  if(!els.sidebarCollapseBtn) return;
+  const collapsed=document.body.classList.contains("sidebar-collapsed");
+  els.sidebarCollapseBtn.title=collapsed?"展开侧边栏":"折叠侧边栏";
+  els.sidebarCollapseBtn.setAttribute("aria-label",collapsed?"展开侧边栏":"折叠侧边栏");
+}
+
+function applyNoteSplitPercent(percent,persist=true){
+  let value=Number(percent);
+  if(!Number.isFinite(value)) value=58;
+  value=Math.min(78,Math.max(28,value));
+  noteSourcePercent=value;
+
+  if(els.taskNoteWorkspace){
+    els.taskNoteWorkspace.style.setProperty("--source-pct",`${value}%`);
+  }
+  if(persist){
+    localStorage.setItem("research-desk-note-source-pct",String(value));
+  }
+}
+
+function startNoteSplitDrag(e){
+  if(taskNoteMode!=="split") return;
+  if(window.matchMedia("(max-width: 800px)").matches) return;
+
+  splitDragging=true;
+  els.noteSplitHandle.classList.add("dragging");
+  els.taskNoteWorkspace.classList.add("resizing");
+  els.noteSplitHandle.setPointerCapture?.(e.pointerId);
+
+  const move=ev=>updateNoteSplitFromPointer(ev.clientX);
+  const up=ev=>{
+    splitDragging=false;
+    els.noteSplitHandle.classList.remove("dragging");
+    els.taskNoteWorkspace.classList.remove("resizing");
+    try{els.noteSplitHandle.releasePointerCapture?.(e.pointerId)}catch(_){}
+    window.removeEventListener("pointermove",move);
+    window.removeEventListener("pointerup",up);
+    window.removeEventListener("pointercancel",up);
+    localStorage.setItem("research-desk-note-source-pct",String(noteSourcePercent));
+  };
+
+  window.addEventListener("pointermove",move);
+  window.addEventListener("pointerup",up);
+  window.addEventListener("pointercancel",up);
+  e.preventDefault();
+}
+
+function updateNoteSplitFromPointer(clientX){
+  const workspace=els.taskNoteWorkspace;
+  if(!workspace) return;
+  const rect=workspace.getBoundingClientRect();
+  if(rect.width<=0) return;
+
+  const raw=((clientX-rect.left)/rect.width)*100;
+  applyNoteSplitPercent(raw,false);
+}
+
 function switchView(name){
   els.navItems.forEach(x=>x.classList.toggle("active",x.dataset.view===name));
   els.views.forEach(x=>x.classList.toggle("active",x.id===`view-${name}`));
@@ -1492,6 +1608,10 @@ function setTaskNoteMode(mode,persist=true){
   [els.noteModeSplit,els.noteModeSource,els.noteModePreview].forEach(btn=>{
     btn.classList.toggle("active",btn.dataset.mode===mode);
   });
+
+  if(mode==="split"){
+    applyNoteSplitPercent(noteSourcePercent,false);
+  }
 
   if(mode==="preview"){
     renderMarkdownInto(els.taskDetailsInput.value,els.taskDetailsPreview);
